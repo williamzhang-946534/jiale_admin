@@ -97,20 +97,33 @@ export interface Provider {
 }
 
 export interface ProviderDetail extends Provider {
+  avatar?: string
   idCard?: string
+  idCardImages?: string[]
   certFiles?: string[]
   bankInfo?: string
   wallet?: {
     balance: number
-    history: any[]
+    frozen?: number
+    history: Array<{
+      type: 'income' | 'expense' | 'frozen' | 'unfrozen'
+      amount: number
+      description: string
+      createTime: string
+    }>
   }
   profile?: {
     intro: string
     attributes: Record<string, string>
-    stats: Record<string, number>
+    stats: Record<string, number | string>
     certs: string[]
     gallery: string[]
-    workHistory: any[]
+    workHistory: Array<{
+      company: string
+      position: string
+      period: [string, string]
+      description: string
+    }>
   }
 }
 
@@ -318,4 +331,135 @@ export interface WithdrawalListParams extends PaginationParams {
 
 export interface DashboardChartParams {
   range: 'week' | 'month' | 'year'
+}
+
+// ===== 财务相关 =====
+export interface FinanceStats {
+  totalIncome: number
+  pendingWithdrawals: number
+  activeProviders: number
+  todayIncome: number
+}
+
+export interface FinanceChart {
+  labels: string[]
+  values: number[]
+}
+
+export interface Withdrawal {
+  id: number
+  providerName: string
+  providerPhone: string
+  withdrawalAmount: number
+  status: 'pending' | 'approved' | 'rejected'
+  applyTime: string
+  bankInfo: {
+    bankName: string
+    cardNumber: string
+    branchName: string
+    accountName: string
+  }
+  rejectReason?: string
+}
+
+export interface WithdrawalListParams extends PaginationParams {
+  status?: Withdrawal['status']
+}
+
+export interface WithdrawalAuditParams {
+  action: 'approve' | 'reject'
+  rejectReason?: string
+}
+
+// ===== 营销相关 =====
+export interface MarketingStats {
+  totalCoupons: number
+  activeCoupons: number
+  usedCoupons: number
+  totalBanners: number
+}
+
+export interface Coupon {
+  couponId: string
+  couponName: string
+  type: 'full' | 'discount'
+  discountAmount?: number
+  discountRate?: number
+  minSpend: number
+  totalQuantity: number
+  usedQuantity?: number
+  validDays: number
+  status: 'active' | 'expired' | 'draft'
+  description?: string
+  createTime: string
+}
+
+export interface CouponParams extends PaginationParams {
+  status?: Coupon['status']
+}
+
+export interface Banner {
+  bannerId: string
+  bannerTitle: string
+  imageUrl: string
+  linkUrl?: string
+  sortOrder: number
+  status: 'published' | 'draft'
+  startTime: string
+  endTime: string
+}
+
+export interface BannerParams {
+  status?: Banner['status']
+}
+
+// ===== 系统设置相关 =====
+export interface MembershipSettings {
+  basic: {
+    name: string
+    price: number
+    benefits: string
+  }
+  gold: {
+    name: string
+    price: number
+    benefits: string
+  }
+  diamond: {
+    name: string
+    price: number
+    benefits: string
+  }
+}
+
+export interface Admin {
+  adminId: string
+  username: string
+  realName: string
+  email: string
+  phone?: string
+  role: 'super_admin' | 'admin' | 'operator'
+  status: 'active' | 'disabled'
+  lastLoginTime?: string
+  createTime: string
+}
+
+export interface AdminParams extends PaginationParams {
+  keyword?: string
+}
+
+export interface SystemSettings {
+  systemName: string
+  systemLogo: string
+  servicePhone: string
+  serviceEmail: string
+  companyAddress: string
+  defaultServiceRate: number
+  minWithdrawAmount: number
+  withdrawFeeRate: number
+  autoConfirmTime: number
+  newOrderNotification: boolean
+  withdrawNotification: boolean
+  errorNotification: boolean
+  notificationEmail: string
 }

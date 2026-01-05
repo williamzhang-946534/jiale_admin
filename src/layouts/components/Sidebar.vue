@@ -22,7 +22,7 @@
         <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.path">
           <template #title>
             <el-icon>
-              <component :is="menu.icon || 'Menu'" />
+              <component :is="iconMap[menu.icon] || iconMap.Menu" />
             </el-icon>
             <span>{{ menu.name }}</span>
           </template>
@@ -32,14 +32,14 @@
             :index="child.path"
           >
             <el-icon>
-              <component :is="child.icon || 'Document'" />
+              <component :is="iconMap[child.icon] || iconMap.Document" />
             </el-icon>
             <span>{{ child.name }}</span>
           </el-menu-item>
         </el-sub-menu>
         <el-menu-item v-else :index="menu.path">
           <el-icon>
-            <component :is="menu.icon || 'Document'" />
+            <component :is="iconMap[menu.icon] || iconMap.Document" />
           </el-icon>
           <span>{{ menu.name }}</span>
         </el-menu-item>
@@ -57,6 +57,19 @@ import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import type { MenuItem } from '@/store/auth'
+// 导入所有可能用到的图标
+import {
+  Monitor,
+  Avatar,
+  Document,
+  Service,
+  User,
+  Money,
+  Ticket,
+  Tools,
+  Lock,
+  Menu
+} from '@element-plus/icons-vue'
 
 interface Props {
   collapsed: boolean
@@ -72,6 +85,20 @@ const emit = defineEmits<Emits>()
 
 const route = useRoute()
 const authStore = useAuthStore()
+
+// 图标映射
+const iconMap: Record<string, any> = {
+  Monitor,
+  Avatar,
+  Document,
+  Service,
+  User,
+  Money,
+  Ticket,
+  Tools,
+  Lock,
+  Menu
+}
 
 // 当前激活的菜单
 const activeMenu = computed(() => {

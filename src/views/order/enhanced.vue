@@ -103,21 +103,44 @@
       >
         <el-table-column type="selection" width="55" />
         
-        <el-table-column label="订单信息" min-width="200">
+        <el-table-column label="订单信息" min-width="220">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">{{ row.orderNo }}</div>
-              <div class="order-service">{{ row.serviceName }}</div>
-              <div class="order-time">{{ formatDate(row.createTime) }}</div>
+              <div class="order-no">
+                <el-icon class="order-icon"><Document /></el-icon>
+                {{ row.orderNo }}
+              </div>
+              <div class="order-service">
+                <el-icon class="service-icon"><Service /></el-icon>
+                {{ row.serviceName }}
+              </div>
+              <div class="order-time">
+                <el-icon class="time-icon"><Clock /></el-icon>
+                {{ formatDate(row.createTime) }}
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="客户信息" width="150">
+        <el-table-column label="客户信息" width="180">
           <template #default="{ row }">
             <div class="customer-info">
-              <div class="customer-name">{{ row.userName }}</div>
-              <div class="customer-address">{{ row.address }}</div>
+              <div class="customer-header">
+                <el-avatar :size="24" class="customer-avatar">
+                  <el-icon><User /></el-icon>
+                </el-avatar>
+                <span class="customer-name">{{ row.userName || '未知客户' }}</span>
+              </div>
+              <div class="customer-details">
+                <div class="customer-address-item" v-if="row.address">
+                  <el-icon class="address-icon"><Location /></el-icon>
+                  <span class="customer-address">{{ formatAddress(row.address) }}</span>
+                </div>
+                <div class="customer-phone-item" v-if="row.userPhone">
+                  <el-icon class="phone-icon"><Phone /></el-icon>
+                  <span class="customer-phone">{{ row.userPhone }}</span>
+                </div>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -384,7 +407,16 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { RefreshRight, Search } from '@element-plus/icons-vue'
+import { 
+  RefreshRight, 
+  Search, 
+  Document, 
+  Service, 
+  Clock, 
+  User, 
+  Location, 
+  Phone 
+} from '@element-plus/icons-vue'
 import { 
   getOrders, 
   getOrderDetail, 
@@ -536,6 +568,13 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+// 格式化地址
+const formatAddress = (address: string) => {
+  if (!address) return ''
+  // 限制地址显示长度，避免过长
+  return address.length > 20 ? address.substring(0, 20) + '...' : address
+}
+
 // 加载订单数据
 const loadOrders = async () => {
   loading.value = true
@@ -559,6 +598,7 @@ const loadOrders = async () => {
         serviceName: '家庭日常保洁',
         userId: 'user-1',
         userName: '张三',
+        userPhone: '13800138001',
         providerId: '',
         providerName: '',
         status: 'pending',
@@ -579,6 +619,7 @@ const loadOrders = async () => {
         serviceName: '金牌月嫂服务',
         userId: 'user-2',
         userName: '李四',
+        userPhone: '13800138002',
         providerId: 'provider-1',
         providerName: '王阿姨',
         status: 'in_service',
@@ -886,40 +927,111 @@ onMounted(() => {
 }
 
 .order-info {
-  line-height: 1.4;
+  line-height: 1.6;
+  padding: 4px 0;
+}
+
+.order-no,
+.order-service,
+.order-time {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
 }
 
 .order-no {
-  font-weight: 500;
+  font-weight: 600;
   color: #303133;
-  margin-bottom: 4px;
 }
 
 .order-service {
-  font-size: 12px;
   color: #606266;
-  margin-bottom: 4px;
 }
 
 .order-time {
-  font-size: 12px;
   color: #909399;
+  font-size: 12px;
 }
 
-.customer-info,
-.provider-info {
-  line-height: 1.4;
+.order-icon,
+.service-icon,
+.time-icon {
+  margin-right: 6px;
+  font-size: 14px;
 }
 
-.customer-name,
-.provider-name {
-  font-weight: 500;
-  margin-bottom: 4px;
+.order-icon {
+  color: #409eff;
+}
+
+.service-icon {
+  color: #67c23a;
+}
+
+.time-icon {
+  color: #e6a23c;
+}
+
+.customer-info {
+  line-height: 1.6;
+  padding: 4px 0;
+}
+
+.customer-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.customer-avatar {
+  background-color: #409eff;
+  margin-right: 8px;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 13px;
+}
+
+.customer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-address-item,
+.customer-phone-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #606266;
+}
+
+.address-icon,
+.phone-icon {
+  margin-right: 4px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.address-icon {
+  color: #f56c6c;
+}
+
+.phone-icon {
+  color: #67c23a;
 }
 
 .customer-address {
-  font-size: 12px;
-  color: #606266;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-phone {
+  color: #409eff;
 }
 
 .no-provider {

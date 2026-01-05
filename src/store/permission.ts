@@ -97,11 +97,45 @@ export const usePermissionStore = defineStore('permission', () => {
           ],
         },
         {
+          id: 'finance',
+          name: '财务管理',
+          path: '/finance',
+          icon: 'Money',
+          children: [
+            {
+              id: 'finance-overview',
+              name: '财务概览',
+              path: '/finance/overview',
+              component: 'finance/index',
+            },
+          ],
+        },
+        {
+          id: 'marketing',
+          name: '营销管理',
+          path: '/marketing',
+          icon: 'Ticket',
+          children: [
+            {
+              id: 'marketing-overview',
+              name: '营销活动',
+              path: '/marketing/overview',
+              component: 'marketing/index',
+            },
+          ],
+        },
+        {
           id: 'system',
           name: '系统管理',
           path: '/system',
           icon: 'Lock',
           children: [
+            {
+              id: 'settings',
+              name: '系统设置',
+              path: '/system/settings',
+              component: 'settings/index',
+            },
             {
               id: 'admin-list',
               name: '管理员列表',

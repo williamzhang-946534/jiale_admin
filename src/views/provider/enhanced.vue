@@ -263,12 +263,12 @@
       <template #footer>
         <el-button @click="auditDialog.visible = false">取消</el-button>
         <el-button 
-          type="primary" 
-          :loading="auditDialog.loading"
-          @click="submitAudit"
-        >
-          确认审核
-        </el-button>
+            type="primary" 
+            :loading="auditDialog.loading"
+            @click="submitAudit"
+          >
+            确认审核
+          </el-button>
       </template>
     </el-dialog>
 
@@ -276,51 +276,659 @@
     <el-dialog
       v-model="detailDialog.visible"
       :title="`服务者详情 - ${detailDialog.provider?.name}`"
-      width="800px"
+      width="1000px"
+      :close-on-click-modal="false"
     >
       <div v-if="detailDialog.provider" class="provider-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="姓名">{{ detailDialog.provider.name }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ detailDialog.provider.phone }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusTagType(detailDialog.provider.status)">
-              {{ getStatusLabel(detailDialog.provider.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="评分">
-            <el-rate
-              v-model="detailDialog.provider.rating"
-              disabled
-              show-score
-              text-color="#ff9900"
-            />
-          </el-descriptions-item>
-          <el-descriptions-item label="服务次数">{{ detailDialog.provider.serviceCount }}</el-descriptions-item>
-          <el-descriptions-item label="注册时间">{{ formatDate(detailDialog.provider.createTime) }}</el-descriptions-item>
-        </el-descriptions>
-
-        <!-- 证书信息 -->
-        <div v-if="detailDialog.provider.certFiles" class="cert-section">
-          <h4>资质证书</h4>
-          <el-image
-            v-for="(cert, index) in detailDialog.provider.certFiles"
-            :key="index"
-            :src="cert"
-            :preview-src-list="detailDialog.provider.certFiles"
-            fit="cover"
-            class="cert-image"
-          />
+        <!-- 头部操作区 -->
+        <div class="detail-header">
+          <div class="provider-info">
+            <div class="avatar-section">
+              <el-avatar :src="detailDialog.provider.avatar" :size="80">
+                {{ detailDialog.provider.name?.charAt(0) }}
+              </el-avatar>
+              <div class="status-badges">
+                <el-tag :type="getStatusTagType(detailDialog.provider.status)" size="large">
+                  {{ getStatusLabel(detailDialog.provider.status) }}
+                </el-tag>
+                <el-tag v-if="detailDialog.provider.isBanned" type="danger" size="large" style="margin-top: 8px">
+                  已封禁
+                </el-tag>
+              </div>
+            </div>
+            <div class="info-section">
+              <h3>{{ detailDialog.provider.name }}</h3>
+              <div class="info-row">
+                <el-icon><Phone /></el-icon>
+                <span>{{ detailDialog.provider.phone }}</span>
+              </div>
+              <div class="info-row" v-if="detailDialog.provider.rating">
+                <el-icon><Star /></el-icon>
+                <el-rate
+                  v-model="detailDialog.provider.rating"
+                  disabled
+                  show-score
+                  text-color="#ff9900"
+                  size="small"
+                />
+              </div>
+              <div class="info-row">
+                <el-icon><Calendar /></el-icon>
+                <span>注册时间: {{ formatDate(detailDialog.provider.createdAt) }}</span>
+              </div>
+              <div class="info-row" v-if="detailDialog.provider.providerTypes?.length">
+                <el-icon><Collection /></el-icon>
+                <div class="tags-container">
+                  <el-tag
+                    v-for="type in detailDialog.provider.providerTypes.slice(0, 3)"
+                    :key="type"
+                    size="small"
+                    style="margin-right: 4px"
+                  >
+                    {{ getProviderTypeLabel(type) }}
+                  </el-tag>
+                  <span v-if="detailDialog.provider.providerTypes.length > 3" class="more-tags">
+                    +{{ detailDialog.provider.providerTypes.length - 3 }}
+                  </span>
+                </div>
+              </div>
+              <div class="info-row" v-if="detailDialog.provider.serviceArea">
+                <el-icon><Location /></el-icon>
+                <span>服务区域: {{ detailDialog.provider.serviceArea }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="action-section">
+            <el-button 
+              type="primary" 
+              size="large"
+              @click="detailDialog.editMode = !detailDialog.editMode"
+              :icon="detailDialog.editMode ? 'Close' : 'Edit'"
+            >
+              {{ detailDialog.editMode ? '取消编辑' : '编辑信息' }}
+            </el-button>
+          </div>
         </div>
+
+        <!-- 标签页内容 -->
+        <el-tabs v-model="detailDialog.activeTab">
+          <!-- 基本信息 -->
+          <el-tab-pane label="基本信息" name="basic">
+            <el-form 
+              :model="detailDialog.editForm" 
+              :disabled="!detailDialog.editMode"
+              label-width="120px"
+              class="detail-form"
+            >
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="姓名">
+                    <el-input v-model="detailDialog.editForm.name" placeholder="请输入姓名" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="手机号">
+                    <el-input v-model="detailDialog.editForm.phone" placeholder="请输入手机号" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="身份证号">
+                    <el-input v-model="detailDialog.editForm.idCardNumber" placeholder="请输入身份证号" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="状态">
+                    <el-select v-model="detailDialog.editForm.status" placeholder="选择状态">
+                      <el-option label="未认证" value="UNVERIFIED" />
+                      <el-option label="待审核" value="PENDING" />
+                      <el-option label="已认证" value="VERIFIED" />
+                      <el-option label="已拒绝" value="REJECTED" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="年龄">
+                    <el-input-number 
+                      v-model="detailDialog.editForm.age" 
+                      :min="16" 
+                      :max="70"
+                      placeholder="请输入年龄"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="工作经验">
+                    <el-input-number 
+                      v-model="detailDialog.editForm.experience" 
+                      :min="0"
+                      placeholder="请输入工作年限"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="星座">
+                    <el-select v-model="detailDialog.editForm.zodiac" placeholder="选择星座" clearable>
+                      <el-option label="白羊座" value="白羊座" />
+                      <el-option label="金牛座" value="金牛座" />
+                      <el-option label="双子座" value="双子座" />
+                      <el-option label="巨蟹座" value="巨蟹座" />
+                      <el-option label="狮子座" value="狮子座" />
+                      <el-option label="处女座" value="处女座" />
+                      <el-option label="天秤座" value="天秤座" />
+                      <el-option label="天蝎座" value="天蝎座" />
+                      <el-option label="射手座" value="射手座" />
+                      <el-option label="摩羯座" value="摩羯座" />
+                      <el-option label="水瓶座" value="水瓶座" />
+                      <el-option label="双鱼座" value="双鱼座" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="属相">
+                    <el-select v-model="detailDialog.editForm.chineseZodiac" placeholder="选择属相" clearable>
+                      <el-option label="鼠" value="鼠" />
+                      <el-option label="牛" value="牛" />
+                      <el-option label="虎" value="虎" />
+                      <el-option label="兔" value="兔" />
+                      <el-option label="龙" value="龙" />
+                      <el-option label="蛇" value="蛇" />
+                      <el-option label="马" value="马" />
+                      <el-option label="羊" value="羊" />
+                      <el-option label="猴" value="猴" />
+                      <el-option label="鸡" value="鸡" />
+                      <el-option label="狗" value="狗" />
+                      <el-option label="猪" value="猪" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="籍贯">
+                <el-input v-model="detailDialog.editForm.hometown" placeholder="请输入籍贯" />
+              </el-form-item>
+
+              <el-form-item label="家庭住址">
+                <el-input v-model="detailDialog.editForm.homeAddress" placeholder="请输入详细家庭住址" />
+              </el-form-item>
+
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="期望工资">
+                    <el-input-number 
+                      v-model="detailDialog.editForm.expectedSalary" 
+                      :min="0"
+                      :precision="2"
+                      placeholder="请输入期望工资"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="实际工资">
+                    <el-input-number 
+                      v-model="detailDialog.editForm.actualSalary" 
+                      :min="0"
+                      :precision="2"
+                      placeholder="请输入实际工资"
+                      style="width: 100%"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="服务区域">
+                <el-input v-model="detailDialog.editForm.serviceArea" placeholder="请输入服务区域" />
+              </el-form-item>
+
+              <el-form-item label="个人简介">
+                <el-input 
+                  v-model="detailDialog.editForm.intro" 
+                  type="textarea" 
+                  :rows="4"
+                  placeholder="请输入个人简介"
+                />
+              </el-form-item>
+
+              <el-form-item label="服务类型">
+                <el-select
+                  v-model="detailDialog.editForm.providerTypes"
+                  multiple
+                  placeholder="选择服务类型"
+                  style="width: 100%"
+                >
+                  <el-option label="月嫂" value="MATERNITY_NURSE" />
+                  <el-option label="育儿嫂" value="CHILD_CARE_NURSE" />
+                  <el-option label="住家保姆" value="LIVE_IN_NANNY" />
+                  <el-option label="保洁" value="CLEANING" />
+                  <el-option label="清洁" value="HOUSEKEEPING" />
+                  <el-option label="钟点工" value="HOURLY_WORKER" />
+                  <el-option label="洗护" value="LAUNDRY_CARE" />
+                  <el-option label="医院看护" value="HOSPITAL_CARE" />
+                  <el-option label="老人护理" value="ELDERLY_CARE" />
+                  <el-option label="烹饪" value="COOKING" />
+                  <el-option label="家教" value="TUTORING" />
+                </el-select>
+              </el-form-item>
+
+              <el-row :gutter="24">
+                <el-col :span="8">
+                  <el-form-item label="在线状态">
+                    <el-switch 
+                      v-model="detailDialog.editForm.isOnline"
+                      active-text="在线"
+                      inactive-text="离线"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="推荐展示">
+                    <el-switch 
+                      v-model="detailDialog.editForm.isRecommended"
+                      active-text="推荐"
+                      inactive-text="不推荐"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="封禁状态">
+                    <el-switch 
+                      v-model="detailDialog.editForm.isBanned"
+                      active-text="已封禁"
+                      inactive-text="正常"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item v-if="detailDialog.editMode">
+                <el-button type="primary" @click="saveProviderDetail" :loading="detailDialog.saveLoading">
+                  保存基本信息
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- 个人资料 -->
+          <el-tab-pane label="个人资料" name="profile">
+            <div v-if="detailDialog.provider.profile" class="profile-content">
+              <el-form 
+                :model="detailDialog.editProfileForm" 
+                :disabled="!detailDialog.editMode"
+                label-width="120px"
+                class="detail-form"
+              >
+                <el-form-item label="个人介绍">
+                  <el-input 
+                    v-model="detailDialog.editProfileForm.intro" 
+                    type="textarea" 
+                    :rows="4"
+                    placeholder="请输入个人介绍"
+                  />
+                </el-form-item>
+
+                <el-form-item label="个人属性">
+                  <div class="attributes-grid">
+                    <div 
+                      v-for="(value, key) in detailDialog.editProfileForm.attributes" 
+                      :key="key"
+                      class="attribute-item"
+                    >
+                      <el-input 
+                        v-model="detailDialog.editProfileForm.attributes[key]"
+                        :placeholder="key"
+                        :disabled="!detailDialog.editMode"
+                      />
+                    </div>
+                    <el-button 
+                      v-if="detailDialog.editMode"
+                      type="primary" 
+                      plain 
+                      @click="addAttribute"
+                      style="margin-top: 8px"
+                    >
+                      添加属性
+                    </el-button>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="服务统计">
+                  <div class="stats-grid">
+                    <div 
+                      v-for="(value, key) in detailDialog.editProfileForm.stats" 
+                      :key="key"
+                      class="stat-item"
+                    >
+                      <span class="stat-label">{{ key }}:</span>
+                      <el-input-number 
+                        v-model="detailDialog.editProfileForm.stats[key]"
+                        :min="0"
+                        :disabled="!detailDialog.editMode"
+                        size="small"
+                      />
+                    </div>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="资质证书">
+                  <div class="certs-list">
+                    <el-tag
+                      v-for="(cert, index) in detailDialog.editProfileForm.certs"
+                      :key="index"
+                      closable
+                      @close="removeCert(index)"
+                      :disable-transitions="false"
+                      style="margin: 4px"
+                    >
+                      {{ cert }}
+                    </el-tag>
+                    <el-input
+                      v-if="detailDialog.certInputVisible"
+                      ref="certInputRef"
+                      v-model="detailDialog.certInputValue"
+                      class="cert-input"
+                      size="small"
+                      @keyup.enter="handleCertInputConfirm"
+                      @blur="handleCertInputConfirm"
+                    />
+                    <el-button v-else-if="detailDialog.editMode" size="small" @click="showCertInput">
+                      + 添加证书
+                    </el-button>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="工作经历">
+                  <div class="work-history">
+                    <div 
+                      v-for="(work, index) in detailDialog.editProfileForm.workHistory" 
+                      :key="index"
+                      class="work-item"
+                    >
+                      <el-card>
+                        <template #header>
+                          <div class="work-header">
+                            <span>工作经历 {{ index + 1 }}</span>
+                            <el-button 
+                              v-if="detailDialog.editMode"
+                              type="danger" 
+                              size="small" 
+                              @click="removeWorkHistory(index)"
+                            >
+                              删除
+                            </el-button>
+                          </div>
+                        </template>
+                        <el-form :model="work" label-width="80px">
+                          <el-form-item label="公司">
+                            <el-input v-model="work.company" :disabled="!detailDialog.editMode" />
+                          </el-form-item>
+                          <el-form-item label="职位">
+                            <el-input v-model="work.position" :disabled="!detailDialog.editMode" />
+                          </el-form-item>
+                          <el-form-item label="时间段">
+                            <el-date-picker
+                              v-model="work.period"
+                              type="daterange"
+                              range-separator="至"
+                              start-placeholder="开始日期"
+                              end-placeholder="结束日期"
+                              :disabled="!detailDialog.editMode"
+                            />
+                          </el-form-item>
+                          <el-form-item label="描述">
+                            <el-input 
+                              v-model="work.description" 
+                              type="textarea" 
+                              :rows="2"
+                              :disabled="!detailDialog.editMode"
+                            />
+                          </el-form-item>
+                        </el-form>
+                      </el-card>
+                    </div>
+                    <el-button 
+                      v-if="detailDialog.editMode"
+                      type="primary" 
+                      plain 
+                      @click="addWorkHistory"
+                      style="margin-top: 16px"
+                    >
+                      添加工作经历
+                    </el-button>
+                  </div>
+                </el-form-item>
+
+                <el-form-item v-if="detailDialog.editMode">
+                  <el-button type="primary" @click="saveProfile" :loading="detailDialog.saveLoading">
+                    保存个人资料
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-tab-pane>
+
+          <!-- 统计信息 -->
+          <el-tab-pane label="统计信息" name="stats">
+            <div class="stats-content">
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-card title="订单统计">
+                    <template #header>
+                      <div class="card-header">
+                        <el-icon><DataAnalysis /></el-icon>
+                        <span>订单统计</span>
+                      </div>
+                    </template>
+                    <el-descriptions :column="1" border>
+                      <el-descriptions-item label="总订单数">
+                        <span class="stat-number">{{ detailDialog.provider.totalOrders || 0 }}</span>
+                      </el-descriptions-item>
+                      <el-descriptions-item label="总收入">
+                        <span class="income">¥{{ Number(detailDialog.provider.totalRevenue || 0).toFixed(2) }}</span>
+                      </el-descriptions-item>
+                      <el-descriptions-item label="今日收入">
+                        <span class="income">¥{{ Number(detailDialog.provider.todayEarnings || 0).toFixed(2) }}</span>
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+                </el-col>
+                <el-col :span="12">
+                  <el-card title="钱包信息">
+                    <template #header>
+                      <div class="card-header">
+                        <el-icon><Wallet /></el-icon>
+                        <span>钱包信息</span>
+                      </div>
+                    </template>
+                    <el-descriptions :column="1" border>
+                      <el-descriptions-item label="钱包余额">
+                        <span class="balance">¥{{ Number(detailDialog.provider.walletBalance || 0).toFixed(2) }}</span>
+                      </el-descriptions-item>
+                      <el-descriptions-item label="可提现余额">
+                        <span class="withdrawable">¥{{ Number(detailDialog.provider.withdrawableBalance || 0).toFixed(2) }}</span>
+                      </el-descriptions-item>
+                      <el-descriptions-item label="评分">
+                        <el-rate
+                          v-model="detailDialog.provider.rating"
+                          disabled
+                          show-score
+                          text-color="#ff9900"
+                          score-template="{value} 分"
+                        />
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+                </el-col>
+              </el-row>
+            </div>
+          </el-tab-pane>
+
+          <!-- 证件图片 -->
+          <el-tab-pane label="证件图片" name="documents">
+            <div class="documents-section">
+              <div class="document-group">
+                <h4>身份证照片</h4>
+                <div class="image-grid">
+                  <div v-if="detailDialog.provider.idCardImageUrl" class="image-item">
+                    <el-image
+                      :src="detailDialog.provider.idCardImageUrl"
+                      :preview-src-list="[detailDialog.provider.idCardImageUrl]"
+                      fit="cover"
+                      class="document-image"
+                    >
+                      <template #error>
+                        <div class="image-error">
+                          <el-icon><Picture /></el-icon>
+                          <span>图片加载失败</span>
+                        </div>
+                      </template>
+                    </el-image>
+                  </div>
+                  <div v-else class="no-image">
+                    <el-icon><Picture /></el-icon>
+                    <span>暂无身份证照片</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="document-group">
+                <h4>资质证书</h4>
+                <div class="image-grid">
+                  <div v-if="detailDialog.provider.certFiles && detailDialog.provider.certFiles.length > 0" class="image-item">
+                    <el-image
+                      v-for="(cert, index) in detailDialog.provider.certFiles"
+                      :key="index"
+                      :src="cert"
+                      :preview-src-list="detailDialog.provider.certFiles"
+                      fit="cover"
+                      class="document-image"
+                    >
+                      <template #error>
+                        <div class="image-error">
+                          <el-icon><Picture /></el-icon>
+                          <span>图片加载失败</span>
+                        </div>
+                      </template>
+                    </el-image>
+                  </div>
+                  <div v-else class="no-image">
+                    <el-icon><Picture /></el-icon>
+                    <span>暂无资质证书</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <!-- 钱包信息 -->
+          <el-tab-pane label="钱包信息" name="wallet">
+            <div v-if="detailDialog.provider.wallet" class="wallet-content">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="当前余额">
+                  <span class="balance">¥{{ detailDialog.provider.wallet.balance }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="冻结金额">
+                  <span class="frozen">¥{{ detailDialog.provider.wallet.frozen || 0 }}</span>
+                </el-descriptions-item>
+              </el-descriptions>
+
+              <h4 style="margin-top: 24px">交易记录</h4>
+              <el-table :data="detailDialog.provider.wallet.history" stripe>
+                <el-table-column prop="type" label="类型" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="getTransactionType(row.type)">
+                      {{ getTransactionText(row.type) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="amount" label="金额" width="120">
+                  <template #default="{ row }">
+                    <span :class="row.amount > 0 ? 'income' : 'expense'">
+                      ¥{{ row.amount }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="description" label="描述" />
+                <el-table-column prop="createTime" label="时间" width="180" />
+              </el-table>
+            </div>
+          </el-tab-pane>
+
+          <!-- 银行信息 -->
+          <el-tab-pane label="银行信息" name="bank">
+            <div class="bank-content">
+              <el-form 
+                :model="detailDialog.editBankForm" 
+                :disabled="!detailDialog.editMode"
+                label-width="120px"
+                class="detail-form"
+              >
+                <el-form-item label="银行名称">
+                  <el-input v-model="detailDialog.editBankForm.bankName" placeholder="请输入银行名称" />
+                </el-form-item>
+                <el-form-item label="银行卡号">
+                  <el-input v-model="detailDialog.editBankForm.cardNumber" placeholder="请输入银行卡号" />
+                </el-form-item>
+                <el-form-item label="开户行">
+                  <el-input v-model="detailDialog.editBankForm.branchName" placeholder="请输入开户行" />
+                </el-form-item>
+                <el-form-item label="持卡人姓名">
+                  <el-input v-model="detailDialog.editBankForm.accountName" placeholder="请输入持卡人姓名" />
+                </el-form-item>
+
+                <el-form-item v-if="detailDialog.editMode">
+                  <el-button type="primary" @click="saveBankInfo" :loading="detailDialog.saveLoading">
+                    保存银行信息
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
+
+      <template #footer>
+        <el-button @click="detailDialog.visible = false">关闭</el-button>
+        <el-button 
+          v-if="detailDialog.provider?.status === 'pending'"
+          type="success" 
+          @click="handleAudit('approve')"
+        >
+          通过审核
+        </el-button>
+        <el-button 
+          v-if="detailDialog.provider?.status === 'pending'"
+          type="danger" 
+          @click="handleAudit('reject')"
+        >
+          拒绝审核
+        </el-button>
+        <el-button 
+          :type="detailDialog.provider?.isBanned ? 'success' : 'danger'"
+          @click="toggleBan"
+        >
+          {{ detailDialog.provider?.isBanned ? '解封账号' : '封禁账号' }}
+        </el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { RefreshRight, Search } from '@element-plus/icons-vue'
-import { getProviders, auditProvider, banProvider, getProviderDetail } from '@/api/modules/provider'
+import { RefreshRight, Search, Edit, Close, Phone, Star, Calendar, Collection, DataAnalysis, Wallet, Location } from '@element-plus/icons-vue'
+import { getProviders, auditProvider, banProvider, getProviderDetail, updateProvider } from '@/api/modules/provider'
 import type { Provider, ProviderDetail, ProviderAuditParams } from '@/types/api'
 
 // 查询参数
@@ -387,7 +995,60 @@ const auditDialog = reactive({
 const detailDialog = reactive({
   visible: false,
   provider: null as ProviderDetail | null,
+  editMode: false,
+  activeTab: 'basic',
+  saveLoading: false,
+  form: {
+    action: 'approve' as 'approve' | 'reject',
+    reasonType: '',
+    reason: '',
+  },
+  loading: false,
+  // 编辑表单
+  editForm: {
+    name: '',
+    phone: '',
+    idCardNumber: '',
+    status: 'UNVERIFIED' as const,
+    intro: '',
+    age: null as number | null,
+    experience: null as number | null,
+    zodiac: '',
+    chineseZodiac: '',
+    hometown: '',
+    homeAddress: '',
+    expectedSalary: null as number | null,
+    actualSalary: null as number | null,
+    serviceArea: '',
+    providerTypes: [] as string[],
+    isOnline: false,
+    isRecommended: false,
+    isBanned: false
+  },
+  editProfileForm: {
+    intro: '',
+    attributes: {} as Record<string, string>,
+    stats: {} as Record<string, number>,
+    certs: [] as string[],
+    workHistory: [] as any[],
+    gallery: [] as string[]
+  },
+  editBankForm: {
+    bankName: '',
+    cardNumber: '',
+    branchName: '',
+    accountName: ''
+  },
+  // 证书输入
+  certInputVisible: false,
+  certInputValue: '',
+  certInputRef: null as any
 })
+
+// 常用标签
+const commonTags = [
+  '金牌月嫂', '育儿嫂', '保姆', '钟点工', '保洁', '护工', '老人护理', '病人护理'
+]
 
 // 获取状态标签类型
 const getStatusTagType = (status: Provider['status']) => {
@@ -402,15 +1063,33 @@ const getStatusTagType = (status: Provider['status']) => {
 }
 
 // 获取状态标签文本
-const getStatusLabel = (status: Provider['status']) => {
-  const labelMap = {
-    unverified: '未认证',
-    pending: '待审核',
-    verified: '已通过',
-    rejected: '已拒绝',
-    banned: '已封禁',
+const getStatusLabel = (status: string) => {
+  const labelMap: Record<string, string> = {
+    'UNVERIFIED': '未认证',
+    'PENDING': '待审核',
+    'VERIFIED': '已认证',
+    'REJECTED': '已拒绝',
+    'BANNED': '已封禁'
   }
-  return labelMap[status] || '未知'
+  return labelMap[status] || status
+}
+
+// 获取服务类型标签文本
+const getProviderTypeLabel = (type: string) => {
+  const labelMap: Record<string, string> = {
+    'MATERNITY_NURSE': '月嫂',
+    'CHILD_CARE_NURSE': '育儿嫂',
+    'LIVE_IN_NANNY': '住家保姆',
+    'CLEANING': '保洁',
+    'HOUSEKEEPING': '清洁',
+    'HOURLY_WORKER': '钟点工',
+    'LAUNDRY_CARE': '洗护',
+    'HOSPITAL_CARE': '医院看护',
+    'ELDERLY_CARE': '老人护理',
+    'COOKING': '烹饪',
+    'TUTORING': '家教'
+  }
+  return labelMap[type] || type
 }
 
 // 格式化日期
@@ -488,35 +1167,304 @@ const handleViewDetail = async (provider: Provider) => {
   try {
     const detail = await getProviderDetail(provider.id)
     detailDialog.provider = detail
+    
+    // 初始化编辑表单
+    detailDialog.editForm.name = detail.name
+    detailDialog.editForm.phone = detail.phone
+    detailDialog.editForm.idCardNumber = detail.idCardNumber || ''
+    detailDialog.editForm.status = detail.status
+    detailDialog.editForm.intro = detail.intro || ''
+    detailDialog.editForm.age = detail.age
+    detailDialog.editForm.experience = detail.experience
+    detailDialog.editForm.zodiac = detail.zodiac || ''
+    detailDialog.editForm.chineseZodiac = detail.chineseZodiac || ''
+    detailDialog.editForm.hometown = detail.hometown || ''
+    detailDialog.editForm.homeAddress = detail.homeAddress || ''
+    detailDialog.editForm.expectedSalary = detail.expectedSalary
+    detailDialog.editForm.actualSalary = detail.actualSalary
+    detailDialog.editForm.serviceArea = detail.serviceArea || ''
+    detailDialog.editForm.providerTypes = detail.providerTypes || []
+    detailDialog.editForm.isOnline = detail.isOnline || false
+    detailDialog.editForm.isRecommended = detail.isRecommended || false
+    detailDialog.editForm.isBanned = detail.isBanned || false
+
     detailDialog.visible = true
   } catch (error) {
-    ElMessage.error('获取服务者详情失败')
-    // Mock详情
-    detailDialog.provider = {
+    ElMessage.error('获取详情失败')
+    // Mock数据
+    const mockDetail: ProviderDetail = {
       ...provider,
-      idCard: '110101199001011234',
-      certFiles: ['https://example.com/cert1.jpg', 'https://example.com/cert2.jpg'],
-      bankInfo: '工商银行 6222021234567890',
-      profile: {
-        intro: provider.description || '',
-        attributes: { age: '35岁', hometown: '河北' },
-        stats: { households: 88, reviews: 51 },
-        certs: ['母婴护理高级证'],
-        gallery: [],
-        workHistory: []
-      }
+      idCardNumber: '110101199002022345',
+      intro: '专业维修师傅，技术过硬，服务态度好',
+      avatarUrl: 'https://example.com/avatar2.jpg',
+      idCardImageUrl: '',
+      certFiles: [
+        '身份证.jpg?watermark=1',
+        '电工证.jpg?watermark=1'
+      ],
+      rating: '4.9',
+      totalOrders: 0,
+      totalRevenue: '0',
+      todayEarnings: '200',
+      walletBalance: '1800',
+      withdrawableBalance: '0',
+      age: 35,
+      experience: 8,
+      zodiac: '天秤座',
+      chineseZodiac: '兔',
+      hometown: '河南郑州',
+      homeAddress: '河南省郑州市金水区...',
+      workExperience: null,
+      expectedSalary: 8000.00,
+      actualSalary: 7500.00,
+      providerTypes: ['MATERNITY_NURSE', 'CHILD_CARE_NURSE'],
+      serviceArea: '河南漯河',
+      isOnline: false,
+      isRecommended: false,
+      createdAt: '2026-01-04T01:05:23.803Z',
+      updatedAt: '2026-01-05T06:49:29.118Z'
     }
+    
+    detailDialog.provider = mockDetail
+    detailDialog.editForm.name = mockDetail.name
+    detailDialog.editForm.phone = mockDetail.phone
+    detailDialog.editForm.idCardNumber = mockDetail.idCardNumber || ''
+    detailDialog.editForm.status = mockDetail.status
+    detailDialog.editForm.intro = mockDetail.intro || ''
+    detailDialog.editForm.age = mockDetail.age
+    detailDialog.editForm.experience = mockDetail.experience
+    detailDialog.editForm.zodiac = mockDetail.zodiac || ''
+    detailDialog.editForm.chineseZodiac = mockDetail.chineseZodiac || ''
+    detailDialog.editForm.hometown = mockDetail.hometown || ''
+    detailDialog.editForm.homeAddress = mockDetail.homeAddress || ''
+    detailDialog.editForm.expectedSalary = mockDetail.expectedSalary
+    detailDialog.editForm.actualSalary = mockDetail.actualSalary
+    detailDialog.editForm.serviceArea = mockDetail.serviceArea || ''
+    detailDialog.editForm.providerTypes = mockDetail.providerTypes || []
+    detailDialog.editForm.isOnline = mockDetail.isOnline || false
+    detailDialog.editForm.isRecommended = mockDetail.isRecommended || false
+    detailDialog.editForm.isBanned = mockDetail.isBanned || false
+
     detailDialog.visible = true
   }
 }
 
+// 保存基本信息
+const saveProviderDetail = async () => {
+  if (!detailDialog.provider) return
+  
+  detailDialog.saveLoading = true
+  try {
+    await updateProvider(detailDialog.provider.id, {
+      name: detailDialog.editForm.name,
+      phone: detailDialog.editForm.phone,
+      idCardNumber: detailDialog.editForm.idCardNumber,
+      status: detailDialog.editForm.status,
+      intro: detailDialog.editForm.intro,
+      age: detailDialog.editForm.age,
+      experience: detailDialog.editForm.experience,
+      zodiac: detailDialog.editForm.zodiac,
+      chineseZodiac: detailDialog.editForm.chineseZodiac,
+      hometown: detailDialog.editForm.hometown,
+      homeAddress: detailDialog.editForm.homeAddress,
+      expectedSalary: detailDialog.editForm.expectedSalary,
+      actualSalary: detailDialog.editForm.actualSalary,
+      serviceArea: detailDialog.editForm.serviceArea,
+      providerTypes: detailDialog.editForm.providerTypes,
+      isOnline: detailDialog.editForm.isOnline,
+      isRecommended: detailDialog.editForm.isRecommended,
+      isBanned: detailDialog.editForm.isBanned
+    })
+    ElMessage.success('基本信息保存成功')
+    detailDialog.editMode = false
+    // 重新加载详情
+    handleViewDetail(detailDialog.provider as any)
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    detailDialog.saveLoading = false
+  }
+}
+
+// 保存个人资料
+const saveProfile = async () => {
+  if (!detailDialog.provider) return
+  
+  detailDialog.saveLoading = true
+  try {
+    await updateProvider(detailDialog.provider.id, {
+      profile: detailDialog.editProfileForm
+    })
+    ElMessage.success('个人资料保存成功')
+    detailDialog.editMode = false
+    handleViewDetail(detailDialog.provider as any)
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    detailDialog.saveLoading = false
+  }
+}
+
+// 保存银行信息
+const saveBankInfo = async () => {
+  if (!detailDialog.provider) return
+  
+  detailDialog.saveLoading = true
+  try {
+    const bankInfoStr = `${detailDialog.editBankForm.bankName}|${detailDialog.editBankForm.cardNumber}|${detailDialog.editBankForm.branchName}|${detailDialog.editBankForm.accountName}`
+    await updateProvider(detailDialog.provider.id, {
+      bankInfo: bankInfoStr
+    })
+    ElMessage.success('银行信息保存成功')
+    detailDialog.editMode = false
+    handleViewDetail(detailDialog.provider as any)
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    detailDialog.saveLoading = false
+  }
+}
+
+// 添加属性
+const addAttribute = () => {
+  const key = prompt('请输入属性名称')
+  if (key) {
+    detailDialog.editProfileForm.attributes[key] = ''
+  }
+}
+
+// 添加工作经历
+const addWorkHistory = () => {
+  detailDialog.editProfileForm.workHistory.push({
+    company: '',
+    position: '',
+    period: [],
+    description: ''
+  })
+}
+
+// 删除工作经历
+const removeWorkHistory = (index: number) => {
+  detailDialog.editProfileForm.workHistory.splice(index, 1)
+}
+
+// 证书相关方法
+const showCertInput = () => {
+  detailDialog.certInputVisible = true
+  nextTick(() => {
+    detailDialog.certInputRef?.focus()
+  })
+}
+
+const handleCertInputConfirm = () => {
+  if (detailDialog.certInputValue) {
+    detailDialog.editProfileForm.certs.push(detailDialog.certInputValue)
+  }
+  detailDialog.certInputVisible = false
+  detailDialog.certInputValue = ''
+}
+
+const removeCert = (index: number) => {
+  detailDialog.editProfileForm.certs.splice(index, 1)
+}
+
+// 工具方法
+const getTransactionType = (type: string) => {
+  const typeMap: Record<string, string> = {
+    income: 'success',
+    expense: 'danger',
+    frozen: 'warning',
+    unfrozen: 'info'
+  }
+  return typeMap[type] || 'info'
+}
+
+const getTransactionText = (type: string) => {
+  const textMap: Record<string, string> = {
+    income: '收入',
+    expense: '支出',
+    frozen: '冻结',
+    unfrozen: '解冻'
+  }
+  return textMap[type] || type
+}
+
 // 单个审核
-const handleAudit = (provider: Provider, action: 'approve' | 'reject') => {
-  auditDialog.provider = provider
-  auditDialog.form.action = action
-  auditDialog.form.reasonType = ''
-  auditDialog.form.reason = ''
-  auditDialog.visible = true
+const handleAudit = (provider?: Provider, action?: 'approve' | 'reject') => {
+  // 如果是从详情弹窗调用
+  if (detailDialog.provider && action) {
+    detailDialog.form.action = action
+    detailDialog.form.reason = ''
+    submitAuditFromDetail()
+    return
+  }
+  
+  // 原有的列表审核逻辑
+  if (provider) {
+    auditDialog.provider = provider
+    auditDialog.form.action = action || 'approve'
+    auditDialog.form.reasonType = ''
+    auditDialog.form.reason = ''
+    auditDialog.visible = true
+  }
+}
+
+// 从详情弹窗提交审核
+const submitAuditFromDetail = async () => {
+  if (!detailDialog.provider) return
+  
+  if (detailDialog.form.action === 'reject' && !detailDialog.form.reason.trim()) {
+    ElMessage.warning('请输入拒绝原因')
+    return
+  }
+
+  detailDialog.loading = true
+  try {
+    await auditProvider(detailDialog.provider.id, {
+      action: detailDialog.form.action,
+      rejectReason: detailDialog.form.reason
+    })
+    ElMessage.success('审核完成')
+    // 更新详情中的状态
+    if (detailDialog.provider) {
+      detailDialog.provider.status = detailDialog.form.action === 'approve' ? 'verified' : 'rejected'
+    }
+    loadData() // 刷新列表
+  } catch (error) {
+    ElMessage.error('审核失败')
+  } finally {
+    detailDialog.loading = false
+  }
+}
+
+// 切换封禁状态
+const toggleBan = async () => {
+  if (!detailDialog.provider) return
+  
+  const isBanned = detailDialog.provider.isBanned
+  const action = isBanned ? '解封' : '封禁'
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要${action}该服务者账号吗？`,
+      `${action}确认`,
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await banProvider(detailDialog.provider.id, !isBanned)
+    ElMessage.success(`${action}成功`)
+    // 更新详情中的状态
+    detailDialog.provider.isBanned = !isBanned
+    loadData() // 刷新列表
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(`${action}失败`)
+    }
+  }
 }
 
 // 批量审核
@@ -720,10 +1668,9 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
-.provider-phone {
+.provider-meta {
   font-size: 12px;
   color: #909399;
-  margin-bottom: 4px;
 }
 
 .provider-tags {
@@ -732,33 +1679,130 @@ onMounted(() => {
 }
 
 .rating-info {
-  display: flex;
   align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1px solid #e5e7eb;
 }
 
-.pagination-container {
+/* 详情弹窗头部样式 */
+.detail-header {
   display: flex;
-  justify-content: center;
-  margin-top: 24px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 0;
+  margin-bottom: 32px;
+  border-bottom: 2px solid #f0f2f5;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
-.audit-content {
-  padding: 16px 0;
-}
-
-.provider-summary {
+.provider-info {
   display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex: 1;
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
 }
 
-.summary-info h3 {
-  margin: 0 0 8px 0;
+.status-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-section {
+  flex: 1;
+  padding-top: 8px;
+}
+
+.info-section h3 {
+  margin: 0 0 20px 0;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.info-row .el-icon {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+.tags-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.more-tags {
+  color: #9ca3af;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.action-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1px solid #e5e7eb;
+}
+
+/* 统计信息样式 */
+.stats-content {
+  padding: 20px 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
   color: #303133;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 600;
+  color: #409eff;
+}
+
+.income {
+  color: #67c23a;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.balance {
+  color: #409eff;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.withdrawable {
+  color: #e6a23c;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .summary-info p {
@@ -800,6 +1844,46 @@ onMounted(() => {
   }
 
   .stats-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-header {
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px;
+  }
+
+  .provider-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .info-section {
+    width: 100%;
+  }
+
+  .info-section h3 {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .info-row {
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .action-section {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 20px;
+    width: 100%;
+  }
+
+  .attributes-grid,
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 }

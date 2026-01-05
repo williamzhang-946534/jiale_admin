@@ -16,6 +16,13 @@ export const getProviderDetail = (id: string) => {
 }
 
 /**
+ * 更新服务者信息
+ */
+export const updateProvider = (id: string, data: Partial<ProviderDetail>) => {
+  return post<ProviderDetail>(`/providers/${id}`, data)
+}
+
+/**
  * 审核服务者
  */
 export const auditProvider = (id: string, params: ProviderAuditParams) => {

@@ -145,6 +145,34 @@ export const useAuthStore = defineStore('auth', () => {
             ],
           },
           {
+            id: 'finance',
+            name: '财务管理',
+            path: '/finance',
+            icon: 'Money',
+            children: [
+              {
+                id: 'finance-overview',
+                name: '财务概览',
+                path: '/finance/overview',
+                component: 'finance/index',
+              },
+            ],
+          },
+          {
+            id: 'marketing',
+            name: '营销管理',
+            path: '/marketing',
+            icon: 'Ticket',
+            children: [
+              {
+                id: 'marketing-overview',
+                name: '营销活动',
+                path: '/marketing/overview',
+                component: 'marketing/index',
+              },
+            ],
+          },
+          {
             id: 'debug',
             name: '调试工具',
             path: '/debug',
@@ -164,6 +192,12 @@ export const useAuthStore = defineStore('auth', () => {
             path: '/system',
             icon: 'Lock',
             children: [
+              {
+                id: 'settings',
+                name: '系统设置',
+                path: '/system/settings',
+                component: 'settings/index',
+              },
               {
                 id: 'admin-list',
                 name: '管理员列表',
@@ -251,6 +285,141 @@ export const useAuthStore = defineStore('auth', () => {
       // 如果恢复的用户数据没有权限，添加默认权限
       if (!parsedUser.permissions || parsedUser.permissions.length === 0) {
         parsedUser.permissions = ['*']
+      }
+      
+      // 如果恢复的用户数据没有菜单，添加默认菜单
+      if (!parsedUser.menus || parsedUser.menus.length === 0) {
+        console.log('🔄 初始化时添加默认菜单')
+        parsedUser.menus = [
+          {
+            id: 'dashboard',
+            name: '仪表盘',
+            path: '/dashboard',
+            icon: 'Monitor',
+          },
+          {
+            id: 'provider',
+            name: '服务者管理',
+            path: '/provider',
+            icon: 'Avatar',
+            children: [
+              {
+                id: 'provider-list',
+                name: '服务者列表',
+                path: '/provider/list',
+                component: 'provider/enhanced',
+              },
+            ],
+          },
+          {
+            id: 'order',
+            name: '订单管理',
+            path: '/order',
+            icon: 'Document',
+            children: [
+              {
+                id: 'order-list',
+                name: '订单列表',
+                path: '/order/list',
+                component: 'order/enhanced',
+              },
+            ],
+          },
+          {
+            id: 'service',
+            name: '服务管理',
+            path: '/service',
+            icon: 'Service',
+            children: [
+              {
+                id: 'category-list',
+                name: '分类管理',
+                path: '/service/category',
+                component: 'category/index',
+              },
+              {
+                id: 'service-list',
+                name: '服务列表',
+                path: '/service/list',
+                component: 'service/index',
+              },
+            ],
+          },
+          {
+            id: 'user',
+            name: '用户管理',
+            path: '/user',
+            icon: 'User',
+            children: [
+              {
+                id: 'user-list',
+                name: '用户列表',
+                path: '/user/list',
+                component: 'user/enhanced',
+              },
+            ],
+          },
+          {
+            id: 'finance',
+            name: '财务管理',
+            path: '/finance',
+            icon: 'Money',
+            children: [
+              {
+                id: 'finance-overview',
+                name: '财务概览',
+                path: '/finance/overview',
+                component: 'finance/index',
+              },
+            ],
+          },
+          {
+            id: 'marketing',
+            name: '营销管理',
+            path: '/marketing',
+            icon: 'Ticket',
+            children: [
+              {
+                id: 'marketing-overview',
+                name: '营销活动',
+                path: '/marketing/overview',
+                component: 'marketing/index',
+              },
+            ],
+          },
+          {
+            id: 'system',
+            name: '系统管理',
+            path: '/system',
+            icon: 'Lock',
+            children: [
+              {
+                id: 'settings',
+                name: '系统设置',
+                path: '/system/settings',
+                component: 'settings/index',
+              },
+              {
+                id: 'admin-list',
+                name: '管理员列表',
+                path: '/system/admins',
+                component: 'permission/admins',
+              },
+              {
+                id: 'role-list',
+                name: '角色管理',
+                path: '/system/roles',
+                component: 'permission/roles',
+              },
+              {
+                id: 'permission-analysis',
+                name: '权限分析',
+                path: '/system/analysis',
+                component: 'permission/analysis-simple',
+              },
+            ],
+          },
+        ]
         // 更新localStorage
         localStorage.setItem('user', JSON.stringify(parsedUser))
       }
