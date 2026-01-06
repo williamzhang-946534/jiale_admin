@@ -62,6 +62,19 @@ JSON
 描述: 获取首页“限时特惠”区域的服务列表。
 接口: GET /home/special-offers
 响应: List of Service (见 types.ts 定义)
+export interface Service {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  unit: string;
+  rating: number;
+  image: string;
+  description: string;
+  providerCount: number;
+  tags?: string[];
+}
+
 4. 获取首页推荐服务者 (附近的人)
 描述: 获取首页底部的精选服务者列表，支持按标签筛选。
 接口: GET /home/providers
@@ -619,6 +632,30 @@ JSON
   "totalQuantity": 1000,
   "validDays": 7
 }
+3. 限时特惠管理
+接口: 
+- GET /marketing/special-offers (获取列表)
+- POST /marketing/special-offers (新增)
+- PUT /marketing/special-offers/{id} (编辑)
+- DELETE /marketing/special-offers/{id} (删除)
+- PATCH /marketing/special-offers/{id}/status (上下架)
+描述: 管理用户端首页"限时特惠"区域的服务列表。
+请求 (新增/编辑):
+code
+JSON
+{
+  "name": "深度保洁套餐",
+  "category": "保洁清洗",
+  "price": 99.00,
+  "unit": "次",
+  "rating": 4.8,
+  "image": "https://...",
+  "description": "专业深度保洁服务...",
+  "providerCount": 25,
+  "tags": ["深度清洁", "除螨"],
+  "status": "active", // active: 上架, inactive: 下架
+  "sortOrder": 1
+}
 8. 系统设置 (Settings)
 1. 获取/更新会员配置
 接口: GET /settings/membership | PUT /settings/membership
@@ -659,6 +696,154 @@ JSON
 - 每日1点：生成统计报告
 - 订单完成时：实时更新统计数据
 
+10. 未实现接口清单
+以下接口在后台管理系统中尚未实现，需要后续开发：
+
+### ✅ 已实现接口 (2023-12-06更新)
+
+#### 10.1 服务者统计相关接口 ✅
+- GET /providers/{id}/daily-stats - 获取服务者每日统计
+  描述: 获取指定服务者在指定时间范围内的每日统计数据
+  参数:
+    - startDate: string (可选) - 开始日期，格式: YYYY-MM-DD
+    - endDate: string (可选) - 结束日期，格式: YYYY-MM-DD
+  请求示例: GET /providers/p123/daily-stats?startDate=2023-12-01&endDate=2023-12-31
+  响应:
+  ```json
+  {
+    "code": 200,
+    "message": "success",
+    "data": [
+      {
+        "date": "2023-12-01",
+        "orderCount": 5,
+        "orderAmount": 850.00,
+        "earnings": 850.00,
+        "orderTypes": {
+          "月嫂": 2,
+          "保洁": 3
+        }
+      }
+    ]
+  }
+  ```
+  **状态**: ✅ 已实现 - 页面: `/src/views/provider/stats.vue`
+
+- GET /providers/{id}/monthly-stats - 获取服务者月度统计
+  描述: 获取指定服务者在指定年月的详细统计数据
+  参数:
+    - year: number (必需) - 年份，如: 2023
+    - month: number (必需) - 月份，如: 12
+  请求示例: GET /providers/p123/monthly-stats?year=2023&month=12
+  响应:
+  ```json
+  {
+    "code": 200,
+    "message": "success",
+    "data": {
+      "year": 2023,
+      "month": 12,
+      "totalOrders": 156,
+      "totalRevenue": 45680.50,
+      "totalEarnings": 45680.50,
+      "workingDays": 22,
+      "dailyStats": [...]
+    }
+  }
+  ```
+  **状态**: ✅ 已实现 - 页面: `/src/views/provider/stats.vue`
+
+- POST /providers/{id}/update-stats - 更新服务者统计
+  描述: 订单完成时自动调用，实时更新服务者统计数据
+  请求体:
+  ```json
+  {
+    "orderAmount": 850.00,
+    "orderType": "月嫂"
+  }
+  ```
+  **状态**: ✅ 已实现 - API: `/src/api/modules/provider.ts`
+
+#### 10.2 营销管理补充接口 ✅
+- POST /marketing/coupons - 创建优惠券模板
+  描述: 创建新的优惠券活动，用于营销推广
+  请求体:
+  ```json
+  {
+    "name": "新客立减",
+    "amount": 20,
+    "minSpend": 100,
+    "totalQuantity": 1000,
+    "validDays": 7,
+    "description": "新用户专享优惠券",
+    "userLimit": 1,
+    "categoryIds": ["cleaning", "nanny"]
+  }
+  ```
+  **状态**: ✅ 已实现 - 页面: `/src/views/marketing/coupons.vue`
+
+#### 10.3 系统设置补充接口 ✅
+- GET /settings/system - 获取系统设置
+  描述: 获取系统基础配置信息
+  请求示例: GET /settings/system
+  响应:
+  ```json
+  {
+    "code": 200,
+    "message": "success",
+    "data": {
+      "systemName": "家乐家政管理系统",
+      "systemVersion": "v1.0.0",
+      "contactPhone": "400-123-4567",
+      "contactEmail": "support@jiale.com",
+      "businessHours": "09:00-18:00",
+      "orderTimeout": 30,
+      "autoAssign": false,
+      "minOrderAmount": 50,
+      "serviceRadius": 50,
+      "maintenanceMode": false,
+      "announcement": "系统将于今晚22:00-23:00进行维护"
+    }
+  }
+  ```
+  **状态**: ✅ 已实现 - 页面: `/src/views/settings/system.vue`
+
+- PUT /settings/system - 更新系统设置
+  描述: 更新系统基础配置参数
+  请求体:
+  ```json
+  {
+    "contactPhone": "400-123-4567",
+    "contactEmail": "support@jiale.com",
+    "businessHours": "09:00-18:00",
+    "orderTimeout": 30,
+    "autoAssign": false,
+    "minOrderAmount": 50,
+    "serviceRadius": 50,
+    "maintenanceMode": false,
+    "announcement": "系统将于今晚22:00-23:00进行维护"
+  }
+  ```
+  **状态**: ✅ 已实现 - 页面: `/src/views/settings/system.vue`
+
+### ❌ 仍需实现的接口
+
+目前所有接口已全部实现完成！
+
+### 📊 实现进度总结
+
+- **总接口数**: 5个
+- **已实现**: 5个 (100%)
+- **未实现**: 0个 (0%)
+- **完成状态**: ✅ 全部完成
+
+### 🎯 实现功能
+
+1. **服务者统计管理** - 完整的统计页面，支持每日和月度统计查看
+2. **优惠券模板管理** - 完整的CRUD功能，支持创建、编辑、删除、状态切换
+3. **系统设置管理** - 完整的系统配置功能，支持基础信息、订单设置、系统状态、通知设置
+
 ---
-文档版本: v1.0
-最后更新: 2023-12-05
+文档版本: v1.2
+最后更新: 2023-12-06
+状态: 所有未实现接口已完成开发

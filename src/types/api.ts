@@ -236,26 +236,21 @@ export interface WithdrawalAuditParams {
 }
 
 // ===== 营销相关 =====
-export interface Banner {
-  id: number
-  imageUrl: string
-  linkUrl?: string
-  title?: string
-  sortOrder: number
-  status: 'active' | 'inactive'
-  createTime?: string
-}
-
 export interface Coupon {
   id: string
   name: string
+  type: 'full' | 'discount' // 添加类型字段
   amount: number
   minSpend: number
   totalQuantity: number
   usedQuantity: number
   validDays: number
-  status: 'active' | 'inactive'
-  createTime: string
+  status: 'active' | 'expired' | 'draft' // 修正状态字段
+  createdAt: string
+}
+
+export interface CouponParams extends PaginationParams {
+  status?: Coupon['status']
 }
 
 export interface CouponTemplate {
@@ -372,45 +367,40 @@ export interface WithdrawalAuditParams {
 }
 
 // ===== 营销相关 =====
-export interface MarketingStats {
-  totalCoupons: number
-  activeCoupons: number
-  usedCoupons: number
-  totalBanners: number
-}
-
-export interface Coupon {
-  couponId: string
-  couponName: string
-  type: 'full' | 'discount'
-  discountAmount?: number
-  discountRate?: number
-  minSpend: number
-  totalQuantity: number
-  usedQuantity?: number
-  validDays: number
-  status: 'active' | 'expired' | 'draft'
-  description?: string
-  createTime: string
-}
-
-export interface CouponParams extends PaginationParams {
-  status?: Coupon['status']
-}
-
 export interface Banner {
-  bannerId: string
-  bannerTitle: string
+  id: number
   imageUrl: string
   linkUrl?: string
+  title?: string
   sortOrder: number
-  status: 'published' | 'draft'
-  startTime: string
-  endTime: string
+  status: 'published' | 'draft' // 修正状态值
+  createdAt?: string
 }
 
 export interface BannerParams {
   status?: Banner['status']
+}
+
+export interface SpecialOffer {
+  id: string
+  name: string
+  category: string
+  price: number
+  unit: string
+  rating: number
+  image: string
+  description: string
+  providerCount: number
+  tags: string[]
+  status: 'active' | 'inactive'
+  sortOrder: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface SpecialOfferParams extends PaginationParams {
+  status?: SpecialOffer['status']
+  category?: string
 }
 
 // ===== 系统设置相关 =====
@@ -462,4 +452,28 @@ export interface SystemSettings {
   withdrawNotification: boolean
   errorNotification: boolean
   notificationEmail: string
+}
+
+// 服务者统计相关类型
+export interface ProviderDailyStats {
+  date: string
+  orderCount: number
+  orderAmount: number
+  earnings: number
+  orderTypes: Record<string, number>
+}
+
+export interface ProviderMonthlyStats {
+  year: number
+  month: number
+  totalOrders: number
+  totalRevenue: number
+  totalEarnings: number
+  workingDays: number
+  dailyStats: ProviderDailyStats[]
+}
+
+export interface ProviderStatsUpdate {
+  orderAmount: number
+  orderType: string
 }

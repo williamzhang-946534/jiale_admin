@@ -23,7 +23,6 @@
         <el-table-column prop="name" label="分类名称" min-width="200">
           <template #default="{ row }">
             <div class="category-name">
-              <img v-if="row.icon" :src="row.icon" class="category-icon" />
               <span>{{ row.name }}</span>
               <el-tag v-if="!row.parentId" size="small" type="primary">一级</el-tag>
               <el-tag v-else size="small" type="info">二级</el-tag>
@@ -587,5 +586,67 @@ onMounted(() => {
 
 :deep(.el-input-number .el-input__inner) {
   text-align: center;
+}
+
+:deep(.el-table .el-table__row--level-0 .el-table__cell:first-child) {
+  padding-left: 4px !important;
+}
+:deep(.el-table .el-table__row--level-0 .el-table__cell:first-child .cell) {
+    display: flex;
+    align-items: center;
+}
+
+/* 二级分类缩进 */
+:deep(.el-table .el-table__row--level-1 .el-table__cell:first-child) {
+  padding-left: 14px !important;
+}
+
+/* 展开图标基础样式 */
+:deep(.el-table .el-table__expand-icon) {
+  position: absolute !important;
+  left: 4px !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  color: #909399 !important;
+  font-size: 12px !important;
+  transition: transform 0.2s ease !important;
+}
+
+/* 一级分类展开图标位置 */
+:deep(.el-table .el-table__row--level-0 .el-table__expand-icon) {
+  left: 4px !important;
+}
+
+/* 二级分类展开图标位置 */
+:deep(.el-table .el-table__row--level-1 .el-table__expand-icon) {
+  left: 14px !important;
+}
+
+/* 分类名称容器 */
+:deep(.el-table .el-table__cell:first-child .category-name) {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-left: 10px !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+/* 一级分类名称位置 */
+:deep(.el-table .el-table__row--level-0 .el-table__cell:first-child .category-name) {
+  margin-left: 6px !important;
+  vertical-align: middle !important;
+}
+
+/* 二级分类名称位置 */
+:deep(.el-table .el-table__row--level-1 .el-table__cell:first-child .category-name) {
+  margin-left: 0px !important;
+  vertical-align: middle !important;
+}
+:deep(.el-table__placeholder) {
+    display: none;
 }
 </style>

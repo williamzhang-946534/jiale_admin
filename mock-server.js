@@ -29,6 +29,33 @@ const mockData = {
         { date: '2024-01-05', orders: 49, revenue: 3920 },
     ],
 
+    // 系统设置
+    systemSettings: {
+        systemName: '家乐家政管理系统',
+        systemVersion: 'v1.0.0',
+        contactPhone: '400-123-4567',
+        contactEmail: 'support@jiale.com',
+        businessHours: '09:00-18:00',
+        orderTimeout: 30,
+        autoAssign: false,
+        minOrderAmount: 50,
+        serviceRadius: 50,
+        maintenanceMode: false,
+        announcement: '系统将于今晚22:00-23:00进行维护',
+        newOrderNotification: true,
+        withdrawNotification: true,
+        errorNotification: true,
+        notificationEmail: 'admin@jiale.com',
+        // 兼容性字段
+        systemLogo: '',
+        servicePhone: '400-123-4567',
+        companyAddress: '北京市朝阳区xxx街道xxx号',
+        defaultServiceRate: 0.1,
+        minWithdrawAmount: 100,
+        withdrawFeeRate: 0.02,
+        autoConfirmTime: 24
+    },
+
     // 服务者列表
     providers: [{
             id: '1',

@@ -1,12 +1,5 @@
-import { get, post, del, patch } from '@/utils/request'
-import type { MarketingStats, Coupon, CouponParams, Banner, BannerParams, PaginationResponse } from '@/types/api'
-
-/**
- * 获取营销统计数据
- */
-export const getMarketingStats = () => {
-  return get<MarketingStats>('/marketing/stats')
-}
+import { get, post, del, patch, put } from '@/utils/request'
+import type { Coupon, CouponParams, Banner, BannerParams, PaginationResponse, SpecialOffer, SpecialOfferParams } from '@/types/api'
 
 /**
  * 获取优惠券列表
@@ -47,7 +40,7 @@ export const publishCoupon = (id: string) => {
  * 获取轮播图列表
  */
 export const getBanners = (params?: BannerParams) => {
-  return get<Banner[]>('/marketing/banners', params)
+  return get<PaginationResponse<Banner>>('/marketing/banners', params)
 }
 
 /**
@@ -61,7 +54,15 @@ export const createBanner = (data: Omit<Banner, 'bannerId'>) => {
  * 更新轮播图
  */
 export const updateBanner = (id: string, data: Partial<Banner>) => {
+  // 根据接口文档，使用 POST 方法进行更新
   return post<Banner>(`/marketing/banners/${id}`, data)
+}
+
+/**
+ * 更新轮播图状态
+ */
+export const updateBannerStatus = (id: string, status: Banner['status']) => {
+  return patch(`/marketing/banners/${id}/status`, { status })
 }
 
 /**
@@ -69,4 +70,39 @@ export const updateBanner = (id: string, data: Partial<Banner>) => {
  */
 export const deleteBanner = (id: string) => {
   return del(`/marketing/banners/${id}`)
+}
+
+/**
+ * 获取限时特惠列表
+ */
+export const getSpecialOffers = (params?: SpecialOfferParams) => {
+  return get<PaginationResponse<SpecialOffer>>('/marketing/special-offers', params)
+}
+
+/**
+ * 创建限时特惠
+ */
+export const createSpecialOffer = (data: Omit<SpecialOffer, 'id' | 'createTime' | 'updateTime'>) => {
+  return post<SpecialOffer>('/marketing/special-offers', data)
+}
+
+/**
+ * 更新限时特惠
+ */
+export const updateSpecialOffer = (id: string, data: Partial<SpecialOffer>) => {
+  return put<SpecialOffer>(`/marketing/special-offers/${id}`, data)
+}
+
+/**
+ * 删除限时特惠
+ */
+export const deleteSpecialOffer = (id: string) => {
+  return del(`/marketing/special-offers/${id}`)
+}
+
+/**
+ * 更新限时特惠状态
+ */
+export const updateSpecialOfferStatus = (id: string, status: 'active' | 'inactive') => {
+  return patch(`/marketing/special-offers/${id}/status`, { status })
 }
