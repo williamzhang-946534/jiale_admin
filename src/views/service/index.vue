@@ -304,6 +304,7 @@ const dialog = reactive({
   loading: false,
   title: '',
   imageFiles: [] as any[],
+  editingServiceId: '', // 添加当前编辑的服务ID
   form: {
     name: '',
     categoryId: '',
@@ -492,6 +493,7 @@ const openCreate = () => {
 
 const editService = (service: Service) => {
   dialog.title = '编辑服务'
+  dialog.editingServiceId = service.id // 保存当前编辑的服务ID
   dialog.form = {
     name: service.name,
     categoryId: service.categoryId,
@@ -525,10 +527,16 @@ const submitService = async () => {
     const formData = { ...dialog.form }
     
     if (dialog.title === '新增服务') {
+      // 新增模式 - 使用POST方法
       await createService(formData)
       ElMessage.success('创建成功')
     } else {
-      const serviceId = currentService.value?.id || dialog.form.categoryId
+      // 编辑模式 - 使用PUT方法
+      const serviceId = dialog.editingServiceId
+      if (!serviceId) {
+        ElMessage.error('服务ID不能为空')
+        return
+      }
       await updateService(serviceId, formData)
       ElMessage.success('更新成功')
     }
@@ -536,6 +544,7 @@ const submitService = async () => {
     dialog.visible = false
     fetchServices()
   } catch (error) {
+    console.error('服务操作失败:', error)
     ElMessage.error('操作失败')
   } finally {
     dialog.loading = false

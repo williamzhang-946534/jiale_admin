@@ -237,6 +237,7 @@ const dialog = ref({
   visible: false,
   title: '新建优惠券模板',
   loading: false,
+  editingCouponId: '', // 添加当前编辑的优惠券ID
   form: {
     name: '',
     amount: 0,
@@ -303,6 +304,7 @@ const resetFilter = () => {
 // 打开新建对话框
 const openCreateDialog = () => {
   dialog.value.title = '新建优惠券模板'
+  dialog.value.editingCouponId = '' // 重置编辑的优惠券ID
   dialog.value.form = {
     name: '',
     amount: 0,
@@ -320,6 +322,7 @@ const openCreateDialog = () => {
 // 编辑优惠券
 const editCoupon = (coupon: Coupon) => {
   dialog.value.title = '编辑优惠券模板'
+  dialog.value.editingCouponId = coupon.id // 保存当前编辑的优惠券ID
   dialog.value.form = {
     name: coupon.name,
     amount: coupon.amount,
@@ -364,11 +367,16 @@ const submitCoupon = async () => {
   dialog.value.loading = true
   try {
     if (dialog.value.title.includes('编辑')) {
-      // 编辑模式
-      await updateCoupon(coupons.value[0].id, dialog.value.form)
+      // 编辑模式 - 使用POST方法进行更新
+      const couponId = dialog.value.editingCouponId
+      if (!couponId) {
+        ElMessage.error('优惠券ID不能为空')
+        return
+      }
+      await updateCoupon(couponId, dialog.value.form)
       ElMessage.success('更新成功')
     } else {
-      // 新建模式
+      // 新建模式 - 使用POST方法
       await createCoupon(dialog.value.form)
       ElMessage.success('创建成功')
     }
@@ -376,6 +384,7 @@ const submitCoupon = async () => {
     dialog.value.visible = false
     loadCoupons()
   } catch (error) {
+    console.error('优惠券操作失败:', error)
     ElMessage.error('操作失败')
   } finally {
     dialog.value.loading = false

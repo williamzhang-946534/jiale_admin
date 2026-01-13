@@ -12,7 +12,7 @@ export const getCategories = (params?: CategoryListParams) => {
  * 获取分类树
  */
 export const getCategoryTree = () => {
-  return get<Category[]>('/categories/tree')
+  return get<Category[]>('/categories')
 }
 
 /**

@@ -143,6 +143,7 @@ const dialog = ref({
   type: 'root' as 'root' | 'child' | 'edit',
   parentName: '',
   parentId: '',
+  editingCategoryId: '', // 添加当前编辑的分类ID
   form: {
     name: '',
     parentId: null as string | null,
@@ -319,6 +320,7 @@ const openCreate = (type: 'root' | 'child', parent?: Category) => {
 const editCategory = (category: Category) => {
   dialog.value.type = 'edit'
   dialog.value.title = '编辑分类'
+  dialog.value.editingCategoryId = category.id // 保存当前编辑的分类ID
   dialog.value.form = {
     name: category.name,
     parentId: category.parentId || null,
@@ -337,28 +339,45 @@ const submitCategory = async () => {
 
   dialog.value.loading = true
   try {
+    const formData = {
+      name: dialog.value.form.name,
+      parentId: dialog.value.form.parentId,
+      icon: dialog.value.form.icon,
+      sortOrder: dialog.value.form.sortOrder,
+      status: dialog.value.form.status
+    }
+
     if (dialog.value.type === 'edit') {
-      // 编辑模式
-      const categoryId = dialog.value.parentId || dialog.value.form.parentId
+      // 编辑模式 - 使用PUT方法
+      const categoryId = getCurrentCategoryId()
       if (!categoryId) {
         ElMessage.error('分类ID不能为空')
         return
       }
-      await updateCategory(categoryId, dialog.value.form)
+      await updateCategory(categoryId, formData)
       ElMessage.success('更新成功')
     } else {
-      // 新增模式
-      await createCategory(dialog.value.form)
+      // 新增模式 - 使用POST方法
+      await createCategory(formData)
       ElMessage.success('创建成功')
     }
     
     dialog.value.visible = false
     loadCategories()
   } catch (error) {
+    console.error('分类操作失败:', error)
     ElMessage.error('操作失败')
   } finally {
     dialog.value.loading = false
   }
+}
+
+// 获取当前编辑的分类ID
+const getCurrentCategoryId = (): string => {
+  if (dialog.value.type === 'edit') {
+    return dialog.value.editingCategoryId
+  }
+  return ''
 }
 
 const deleteCategory = async (category: Category) => {

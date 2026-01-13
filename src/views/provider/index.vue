@@ -310,15 +310,17 @@ const confirmAudit = async () => {
 
   auditDialog.loading = true
   try {
-    await auditProvider(
-      auditDialog.provider.id,
-      auditDialog.form.action,
-      auditDialog.form.reason
-    )
+    const params = {
+      action: auditDialog.form.action,
+      rejectReason: auditDialog.form.reason || ''
+    }
+    
+    await auditProvider(auditDialog.provider.id, params)
     ElMessage.success('审核完成')
     auditDialog.visible = false
     loadData()
   } catch (error) {
+    console.error('审核失败:', error)
     ElMessage.error('审核失败')
   } finally {
     auditDialog.loading = false
@@ -334,11 +336,12 @@ const handleBan = async (provider: Provider) => {
 
   if (confirmed) {
     try {
-      await banProvider(provider.id, true, '违规操作')
-      ElMessage.success('封禁成功')
+      await banProvider(provider.id, !provider.isBanned)
+      ElMessage.success(provider.isBanned ? '解封成功' : '封禁成功')
       loadData()
     } catch (error) {
-      ElMessage.error('封禁失败')
+      console.error('封禁操作失败:', error)
+      ElMessage.error(provider.isBanned ? '解封失败' : '封禁失败')
     }
   }
 }
