@@ -4,7 +4,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/user',
     name: 'User',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/user/list',
     meta: { title: '用户管理', icon: 'User' },
     children: [
@@ -27,7 +27,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/provider',
     name: 'Provider',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/provider/list',
     meta: { title: '服务者管理', icon: 'Avatar' },
     children: [
@@ -44,7 +44,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/order',
     name: 'Order',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/order/list',
     meta: { title: '订单管理', icon: 'Document' },
     children: [
@@ -61,7 +61,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/finance',
     name: 'Finance',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/finance/withdrawal',
     meta: { title: '财务管理', icon: 'Money' },
     children: [
@@ -78,7 +78,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/marketing',
     name: 'Marketing',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/marketing/banner',
     meta: { title: '营销配置', icon: 'Promotion' },
     children: [
@@ -101,7 +101,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
   {
     path: '/system',
     name: 'System',
-    component: () => import('@/layouts/basicLayout.vue'),
+    component: () => import('@/layouts/BasicLayout.vue'),
     redirect: '/system/role',
     meta: { title: '系统管理', icon: 'Setting' },
     children: [

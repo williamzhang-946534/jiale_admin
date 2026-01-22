@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/auth'
 import { usePermissionStore } from '@/store/permission'
 
 // 同步导入组件
-import BasicLayout from '@/layouts/basicLayout.vue'
+import BasicLayout from '@/layouts/BasicLayout.vue'
 import Dashboard from '@/views/dashboard/index.vue'
 
 // 静态路由
