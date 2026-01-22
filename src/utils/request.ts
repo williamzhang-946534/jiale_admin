@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/store/auth'
 
@@ -14,7 +14,7 @@ const request: AxiosInstance = axios.create({
 
 // 请求拦截器
 request.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config) => {
     const authStore = useAuthStore()
 
     // 自动携带 token
@@ -24,7 +24,7 @@ request.interceptors.request.use(
     }
 
     // 调试：打印请求URL
-    console.log('📤 API请求:', config.method?.toUpperCase(), config.baseURL + config.url, config.params)
+    console.log('📤 API请求:', config.method?.toUpperCase(), (config.baseURL || '') + (config.url || ''), config.params)
 
     return config
   },
@@ -95,7 +95,7 @@ request.interceptors.response.use(
 export default request
 
 // 封装常用请求方法
-export const get = <T = any>(url: string, params?: any, config?: AxiosRequestConfig): Promise<T> => {
+export const get = <T = any>(url: string, params?: any, config?: any): Promise<T> => {
   const requestConfig = { ...config, params }
   return request.get(url, requestConfig).then((res) => res.data.data)
 }
@@ -103,7 +103,7 @@ export const get = <T = any>(url: string, params?: any, config?: AxiosRequestCon
 export const post = <T = any>(
   url: string,
   data?: any,
-  config?: AxiosRequestConfig
+  config?: any
 ): Promise<T> => {
   return request.post(url, data, config).then((res) => res.data.data)
 }
@@ -111,7 +111,7 @@ export const post = <T = any>(
 export const put = <T = any>(
   url: string,
   data?: any,
-  config?: AxiosRequestConfig
+  config?: any
 ): Promise<T> => {
   return request.put(url, data, config).then((res) => res.data.data)
 }
@@ -119,11 +119,11 @@ export const put = <T = any>(
 export const patch = <T = any>(
   url: string,
   data?: any,
-  config?: AxiosRequestConfig
+  config?: any
 ): Promise<T> => {
   return request.patch(url, data, config).then((res) => res.data.data)
 }
 
-export const del = <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+export const del = <T = any>(url: string, config?: any): Promise<T> => {
   return request.delete(url, config).then((res) => res.data.data)
 }

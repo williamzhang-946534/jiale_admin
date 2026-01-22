@@ -275,9 +275,9 @@ export interface Admin {
   id: string
   username: string
   nickname?: string
-  role: string
+  role: 'super_admin' | 'admin' | 'operator'
   permissions?: string[]
-  status: 'active' | 'inactive'
+  status: 'active' | 'disabled'
   createTime: string
   lastLoginTime?: string
 }
@@ -348,7 +348,7 @@ export interface Withdrawal {
   withdrawalAmount: number
   status: 'pending' | 'approved' | 'rejected'
   applyTime: string
-  bankInfo: {
+  bankDetails: {
     bankName: string
     cardNumber: string
     branchName: string

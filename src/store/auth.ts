@@ -56,7 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
           token: string
           admin: User
         }
-      }>('/api/auth/admin/login', params)
+      }>('/api/v1/auth/admin/login', params)
 
       if (response.data.code !== 200) {
         throw new Error(response.data.message || '登录失败')

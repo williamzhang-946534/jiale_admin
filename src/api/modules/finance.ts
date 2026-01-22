@@ -1,5 +1,5 @@
 import { get, post } from '@/utils/request'
-import type { Withdrawal, WithdrawalListParams, WithdrawalAuditParams, PaginationResponse, FinanceStats, FinanceChart } from '@/types/api'
+import type { Withdrawal, WithdrawalListParams, PaginationResponse, FinanceStats, FinanceChart } from '@/types/api'
 
 /**
  * 获取财务统计数据

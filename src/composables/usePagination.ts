@@ -1,4 +1,4 @@
-import { ref, reactive, computed } from 'vue'
+import { reactive } from 'vue'
 
 export interface PaginationConfig {
   page: number

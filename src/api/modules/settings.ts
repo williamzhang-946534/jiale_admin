@@ -1,4 +1,4 @@
-import { get, put, post, del } from '@/utils/request'
+import { get, post, del } from '@/utils/request'
 import type { MembershipSettings, Admin, AdminParams, SystemSettings } from '@/types/api'
 
 /**

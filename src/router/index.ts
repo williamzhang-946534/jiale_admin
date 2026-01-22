@@ -3,31 +3,8 @@ import { useAuthStore } from '@/store/auth'
 import { usePermissionStore } from '@/store/permission'
 
 // 同步导入组件
-import BasicLayout from '@/layouts/BasicLayout.vue'
+import BasicLayout from '@/layouts/basicLayout.vue'
 import Dashboard from '@/views/dashboard/index.vue'
-
-// 临时组件用于显示加载状态
-const TempDashboard = {
-  template: `
-    <div style="padding: 50px; text-align: center; background: #f5f5f5; min-height: 400px;">
-      <h2>🔄 正在加载页面...</h2>
-      <p>如果长时间显示此页面，请刷新浏览器</p>
-      <div style="margin-top: 20px;">
-        <el-button type="primary" @click="$router.go(0)">刷新页面</el-button>
-      </div>
-      <!-- 添加页面跳转测试按钮 -->
-      <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 8px;">
-        <h3 style="margin-bottom: 15px;">页面跳转测试</h3>
-        <div style="display: flex; gap: 10px; justify-content: center;">
-          <el-button type="primary" @click="$router.push('/provider/list')">服务者列表</el-button>
-          <el-button type="success" @click="$router.push('/order/list')">订单列表</el-button>
-          <el-button type="warning" @click="$router.push('/dashboard')">控制台</el-button>
-        </div>
-        <p style="margin-top: 10px; color: #666;">当前路径: {{ $route.path }}</p>
-      </div>
-    </div>
-  `
-}
 
 // 静态路由
 const constantRoutes: RouteRecordRaw[] = [
@@ -61,7 +38,7 @@ const router = createRouter({
 const whiteList = ['/login', '/403', '/404']
 
 // 路由守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   const permissionStore = usePermissionStore()
 
@@ -140,8 +117,7 @@ router.beforeEach(async (to, from, next) => {
           const allRoutes = router.getRoutes()
           console.log('📋 当前路由:', allRoutes.map(r => ({
             path: r.path,
-            name: r.name,
-            parent: r.parent?.name
+            name: r.name
           })))
 
           // 生成并添加动态路由
@@ -176,8 +152,7 @@ router.beforeEach(async (to, from, next) => {
           console.log('🎯 重定向到:', redirectPath)
           console.log('🎯 最终路由表:', router.getRoutes().map(r => ({
             path: r.path,
-            name: r.name,
-            parent: r.parent?.name
+            name: r.name
           })))
           next({ path: redirectPath, replace: true })
           return
@@ -196,7 +171,7 @@ router.beforeEach(async (to, from, next) => {
       }
     } else {
       // Layout路由已存在，检查路由权限
-        const hasPermission = permissionStore.hasRoutePermission(to as RouteRecordRaw)
+        const hasPermission = permissionStore.hasRoutePermission(to as any)
         if (hasPermission) {
           next()
         } else {
