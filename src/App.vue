@@ -13,7 +13,6 @@ const route = useRoute()
 const authStore = useAuthStore()
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 
-console.log('App component loaded')
 </script>
 
 <style>

@@ -5,7 +5,9 @@ import { useAuthStore } from '@/store/auth'
 // 创建 axios 实例
 // 根据API文档：管理员后台接口路径是 /api/admin/v1/...
 const request: AxiosInstance = axios.create({
-  baseURL: '/api/admin/v1',
+  baseURL: import.meta.env.VITE_APP_ENV === 'production' 
+    ? `${import.meta.env.VITE_API_BASE_URL}/api/admin/v1`
+    : '/api/admin/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -23,8 +25,6 @@ request.interceptors.request.use(
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
 
-    // 调试：打印请求URL
-    console.log('📤 API请求:', config.method?.toUpperCase(), (config.baseURL || '') + (config.url || ''), config.params)
 
     return config
   },
@@ -64,13 +64,6 @@ request.interceptors.response.use(
         case 404:
           const requestUrl = response.config?.url || '未知'
           ElMessage.error(`请求地址不存在: ${requestUrl}`)
-          console.error('❌ 404错误 - 请求URL:', response.config?.baseURL + response.config?.url)
-          console.error('❌ 完整请求信息:', {
-            method: response.config?.method,
-            url: response.config?.url,
-            baseURL: response.config?.baseURL,
-            fullURL: response.config?.baseURL + response.config?.url,
-          })
           break
         case 500:
           ElMessage.error('服务器内部错误')
