@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   
   return {
-    base: '/jiale_admin/',
+    base: '/',
     plugins: [vue()],
     resolve: {
       alias: {
