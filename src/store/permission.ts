@@ -181,10 +181,28 @@ export const usePermissionStore = defineStore('permission', () => {
             fullPath: `/src/views/${componentPath}.vue`,
             childName: child.name
           })
+          // 创建组件映射表，确保生产环境正确加载
+          const componentMap: Record<string, () => Promise<any>> = {
+            'provider/enhanced': () => import('@/views/provider/enhanced.vue'),
+            'provider/index': () => import('@/views/provider/index.vue'),
+            'order/enhanced': () => import('@/views/order/enhanced.vue'),
+            'order/index': () => import('@/views/order/index.vue'),
+            'user/enhanced': () => import('@/views/user/enhanced.vue'),
+            'user/index': () => import('@/views/user/index.vue'),
+            'category/index': () => import('@/views/category/index.vue'),
+            'service/index': () => import('@/views/service/index.vue'),
+            'finance/index': () => import('@/views/finance/index.vue'),
+            'marketing/index': () => import('@/views/marketing/index.vue'),
+            'settings/index': () => import('@/views/settings/index.vue'),
+            'permission/admins': () => import('@/views/permission/admins.vue'),
+            'permission/roles': () => import('@/views/permission/roles.vue'),
+            'permission/analysis-simple': () => import('@/views/permission/analysis-simple.vue'),
+          }
+
           routes.push({
             path: routePath,
             name: routeName,
-            component: () => import(/* @vite-ignore */ `/src/views/${componentPath}.vue`),
+            component: componentMap[componentPath] || (() => import('@/views/dashboard/index.vue')),
             meta: {
               title: child.name,
               icon: child.icon,
@@ -201,10 +219,29 @@ export const usePermissionStore = defineStore('permission', () => {
           compPath,
           fullPath: `/src/views/${compPath}.vue`
         })
+        
+        // 创建组件映射表，确保生产环境正确加载
+        const componentMap: Record<string, () => Promise<any>> = {
+          'provider/enhanced': () => import('@/views/provider/enhanced.vue'),
+          'provider/index': () => import('@/views/provider/index.vue'),
+          'order/enhanced': () => import('@/views/order/enhanced.vue'),
+          'order/index': () => import('@/views/order/index.vue'),
+          'user/enhanced': () => import('@/views/user/enhanced.vue'),
+          'user/index': () => import('@/views/user/index.vue'),
+          'category/index': () => import('@/views/category/index.vue'),
+          'service/index': () => import('@/views/service/index.vue'),
+          'finance/index': () => import('@/views/finance/index.vue'),
+          'marketing/index': () => import('@/views/marketing/index.vue'),
+          'settings/index': () => import('@/views/settings/index.vue'),
+          'permission/admins': () => import('@/views/permission/admins.vue'),
+          'permission/roles': () => import('@/views/permission/roles.vue'),
+          'permission/analysis-simple': () => import('@/views/permission/analysis-simple.vue'),
+        }
+        
         routes.push({
           path: menu.path,
           name: menu.name,
-          component: () => import(/* @vite-ignore */ `/src/views/${compPath}.vue`),
+          component: componentMap[compPath] || (() => import('@/views/dashboard/index.vue')),
           meta: {
             title: menu.name,
             icon: menu.icon,
