@@ -1,0 +1,1 @@
+import{g as s,p as r}from"./index-30b3d731.js";const a=r=>s("/orders",r),o=r=>s(`/orders/${r}`),e=(s,a)=>r(`/orders/${s}/assign`,a),d=(s,a)=>r(`/orders/${s}/refund`,a);export{o as a,e as b,a as g,d as r};

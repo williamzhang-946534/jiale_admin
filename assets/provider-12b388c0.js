@@ -1,0 +1,1 @@
+import{g as s,p as a,a as r}from"./index-30b3d731.js";const i=a=>s("/providers",a),o=a=>s(`/providers/${a}/detail`),d=(s,r)=>a(`/providers/${s}`,r),e=(s,r)=>a(`/providers/${s}/audit`,r),p=(s,a)=>r(`/providers/${s}/account-status`,{isBanned:a});export{o as a,e as b,p as c,i as g,d as u};

@@ -1,0 +1,1 @@
+import{g as s,p as a,b as e,d as o}from"./index-30b3d731.js";const r=a=>s("/categories",a),t=s=>a("/categories",s),c=(s,a)=>e(`/categories/${s}`,a),g=s=>o(`/categories/${s}`);export{t as c,g as d,r as g,c as u};
