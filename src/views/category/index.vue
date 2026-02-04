@@ -7,6 +7,10 @@
         <el-button @click="collapseAll">收起全部</el-button>
       </div>
       <div class="toolbar-right">
+        <div class="category-stats">
+          <el-tag type="info" size="small">一级分类: {{ firstLevelCount }}</el-tag>
+          <el-tag type="primary" size="small">二级分类: {{ secondLevelCount }}</el-tag>
+        </div>
         <el-button @click="loadCategories" :loading="loading">刷新</el-button>
       </div>
     </div>
@@ -30,18 +34,20 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="sortOrder" label="排序" width="100" align="center">
+        <el-table-column prop="sortOrder" label="排序" width="120" align="center">
           <template #default="{ row }">
             <el-input-number
               v-model="row.sortOrder"
               :min="0"
+              :max="999"
               size="small"
               @change="updateSortOrder(row)"
+              controls-position="right"
             />
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <!-- <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -50,13 +56,19 @@
               :before-change="() => handleStatusChange(row)"
             />
           </template>
-        </el-table-column>
+        </el-table-column> -->
 
         <el-table-column prop="createTime" label="创建时间" width="180" />
 
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="openCreate('child', row)">
+            <el-button 
+              v-if="!row.parentId" 
+              link 
+              type="primary" 
+              size="small" 
+              @click="openCreate('child', row)"
+            >
               新增子分类
             </el-button>
             <el-button link type="success" size="small" @click="editCategory(row)">
@@ -93,26 +105,31 @@
         </el-form-item>
 
         <el-form-item label="图标" v-if="dialog.type === 'root'">
-          <el-input v-model="dialog.form.icon" placeholder="请输入图标URL">
-            <template #append>
-              <el-button @click="previewIcon">预览</el-button>
-            </template>
-          </el-input>
-          <div v-if="dialog.form.icon" class="icon-preview">
-            <img :src="dialog.form.icon" alt="图标预览" />
-          </div>
+          <ImageUpload 
+            v-model="dialog.form.icon"
+            upload-type="admin/categories"
+            :limit="1"
+            tip="支持jpg、png、gif、webp格式，文件大小不超过5MB"
+            upload-text="上传分类图标"
+          />
         </el-form-item>
 
         <el-form-item label="排序">
-          <el-input-number v-model="dialog.form.sortOrder" :min="0" />
+          <el-input-number 
+            v-model="dialog.form.sortOrder" 
+            :min="0" 
+            :max="999"
+            class="dialog-sort-input"
+            :key="dialog.type + '-' + dialog.editingCategoryId"
+          />
         </el-form-item>
 
-        <el-form-item label="状态">
+        <!-- <el-form-item label="状态">
           <el-radio-group v-model="dialog.form.status">
-            <el-radio label="active">启用</el-radio>
-            <el-radio label="inactive">禁用</el-radio>
+            <el-radio value="active">启用</el-radio>
+            <el-radio value="inactive">禁用</el-radio>
           </el-radio-group>
-        </el-form-item>
+        </el-form-item> -->
       </el-form>
 
       <template #footer>
@@ -126,8 +143,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
+import ImageUpload from '@/components/ImageUpload.vue'
 import { getCategories, createCategory, updateCategory, deleteCategory as deleteCategoryApi } from '@/api/modules/category'
 import type { Category } from '@/types/api'
 
@@ -135,6 +153,27 @@ const tableRef = ref<InstanceType<typeof ElTable>>()
 const loading = ref(false)
 const categoryTree = ref<Category[]>([])
 const isInitialLoading = ref(true) // 添加初始加载标识
+
+// 计算属性：统计分类数量
+const firstLevelCount = computed(() => {
+  return categoryTree.value.filter(cat => !cat.parentId).length
+})
+
+const secondLevelCount = computed(() => {
+  let count = 0
+  const countSecondLevel = (categories: Category[]) => {
+    categories.forEach(cat => {
+      if (cat.parentId) {
+        count++
+      }
+      if (cat.children && cat.children.length > 0) {
+        countSecondLevel(cat.children)
+      }
+    })
+  }
+  countSecondLevel(categoryTree.value)
+  return count
+})
 
 const dialog = ref({
   visible: false,
@@ -149,7 +188,7 @@ const dialog = ref({
     parentId: null as string | null,
     icon: '',
     sortOrder: 0,
-    status: 'active' as 'active' | 'inactive'
+    // status: 'active' as 'active' | 'inactive' // 暂时注释状态
   }
 })
 
@@ -253,7 +292,8 @@ const buildTree = (flatList: Category[]): Category[] => {
     // 为每个分类添加默认status字段
     const sortedData = [...flatList].map(item => ({
       ...item,
-      status: item.status || 'active' // 如果没有status字段，默认为active
+      status: item.status || 'active', // 如果没有status字段，默认为active
+      sortOrder: item.sortOrder || 0 // 确保sortOrder有默认值
     })).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
     return sortedData
   }
@@ -267,7 +307,8 @@ const buildTree = (flatList: Category[]): Category[] => {
     map.set(item.id, { 
       ...item, 
       children: [],
-      status: item.status || 'active' // 添加默认status
+      status: item.status || 'active', // 添加默认status
+      sortOrder: item.sortOrder || 0 // 确保sortOrder有默认值
     })
   })
 
@@ -312,9 +353,16 @@ const openCreate = (type: 'root' | 'child', parent?: Category) => {
     parentId: parent?.id || null,
     icon: '',
     sortOrder: 0,
-    status: 'active'
+    // status: 'active' // 暂时注释状态
   }
+  console.log('openCreate form:', dialog.value.form) // 调试信息
   dialog.value.visible = true
+}
+
+// 验证是否可以为指定分类添加子分类
+const canAddSubcategory = (parent: Category): boolean => {
+  // 只有一级分类（没有parentId）才能添加子分类
+  return !parent.parentId
 }
 
 const editCategory = (category: Category) => {
@@ -326,8 +374,9 @@ const editCategory = (category: Category) => {
     parentId: category.parentId || null,
     icon: category.icon || '',
     sortOrder: category.sortOrder || 0,
-    status: category.status || 'active'
+    // status: category.status || 'active' // 暂时注释状态
   }
+  console.log('editCategory form:', dialog.value.form) // 调试信息
   dialog.value.visible = true
 }
 
@@ -335,6 +384,15 @@ const submitCategory = async () => {
   if (!dialog.value.form.name) {
     ElMessage.warning('请输入分类名称')
     return
+  }
+
+  // 如果是新增子分类，验证父分类是否为一级分类
+  if (dialog.value.type === 'child' && dialog.value.parentId) {
+    const parentCategory = findCategoryById(dialog.value.parentId)
+    if (parentCategory && parentCategory.parentId) {
+      ElMessage.error('只能为一级分类添加子分类，不能为二级分类添加子分类')
+      return
+    }
   }
 
   dialog.value.loading = true
@@ -372,6 +430,23 @@ const submitCategory = async () => {
   }
 }
 
+// 根据ID查找分类
+const findCategoryById = (id: string): Category | null => {
+  const searchInTree = (categories: Category[]): Category | null => {
+    for (const category of categories) {
+      if (category.id === id) {
+        return category
+      }
+      if (category.children && category.children.length > 0) {
+        const found = searchInTree(category.children)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  return searchInTree(categoryTree.value)
+}
+
 // 获取当前编辑的分类ID
 const getCurrentCategoryId = (): string => {
   if (dialog.value.type === 'edit') {
@@ -402,113 +477,93 @@ const deleteCategory = async (category: Category) => {
   }
 }
 
-// 防抖排序更新
-const sortOrderUpdateTimeouts = new Map<string, NodeJS.Timeout>()
-
 const updateSortOrder = async (category: Category) => {
   if (!category.id) return
   
-  // 如果正在初始加载，不触发更新
-  if (isInitialLoading.value) return
-  
-  // 清除之前的定时器
-  const existingTimeout = sortOrderUpdateTimeouts.get(category.id)
-  if (existingTimeout) {
-    clearTimeout(existingTimeout)
-  }
-  
-  // 设置新的定时器，延迟800ms执行（排序操作通常需要更长时间思考）
-  const timeout = setTimeout(async () => {
-    try {
-      await updateCategory(category.id, { sortOrder: category.sortOrder })
-      ElMessage.success('排序更新成功')
-    } catch (error) {
-      ElMessage.error('排序更新失败')
-    } finally {
-      sortOrderUpdateTimeouts.delete(category.id)
-    }
-  }, 800)
-  
-  sortOrderUpdateTimeouts.set(category.id, timeout)
-}
-
-// 防抖状态更新
-const statusUpdateTimeouts = new Map<string, NodeJS.Timeout>()
-
-const handleStatusChange = (category: Category) => {
-  // 防止重复调用
-  if (!category.id) return false
-  
-  // 如果正在初始加载，不允许切换
+  // 如果正在初始加载，不触发API更新
   if (isInitialLoading.value) {
-    // 恢复原状态
-    category.status = category.status === 'active' ? 'inactive' : 'active'
-    return false
+    console.log('Initial loading, skipping API update for sortOrder:', category.sortOrder)
+    return
   }
   
-  // 清除之前的定时器
-  const existingTimeout = statusUpdateTimeouts.get(category.id)
-  if (existingTimeout) {
-    clearTimeout(existingTimeout)
+  try {
+    await updateCategory(category.id, { sortOrder: category.sortOrder })
+    ElMessage.success('排序更新成功')
+  } catch (error) {
+    ElMessage.error('排序更新失败')
   }
-  
-  // 设置新的定时器，延迟500ms执行
-  const timeout = setTimeout(async () => {
-    try {
-      await updateCategory(category.id, { status: category.status })
-      ElMessage.success('状态更新成功')
-    } catch (error) {
-      // 如果更新失败，恢复原状态
-      category.status = category.status === 'active' ? 'inactive' : 'active'
-      ElMessage.error('状态更新失败')
-    } finally {
-      // 清除定时器
-      statusUpdateTimeouts.delete(category.id)
-    }
-  }, 500)
-  
-  statusUpdateTimeouts.set(category.id, timeout)
-  return true // 允许状态切换
 }
+
+// 防抖状态更新 - 暂时注释
+// const statusUpdateTimeouts = new Map<string, NodeJS.Timeout>()
+
+// const handleStatusChange = (category: Category) => {
+//   // 防止重复调用
+//   if (!category.id) return false
+  
+//   // 如果正在初始加载，不允许切换
+//   if (isInitialLoading.value) {
+//     // 恢复原状态
+//     category.status = category.status === 'active' ? 'inactive' : 'active'
+//     return false
+//   }
+  
+//   // 清除之前的定时器
+//   const existingTimeout = statusUpdateTimeouts.get(category.id)
+//   if (existingTimeout) {
+//     clearTimeout(existingTimeout)
+//   }
+  
+//   // 设置新的定时器，延迟500ms执行
+//   const timeout = setTimeout(async () => {
+//     try {
+//       await updateCategory(category.id, { status: category.status })
+//       ElMessage.success('状态更新成功')
+//     } catch (error) {
+//       // 如果更新失败，恢复原状态
+//       category.status = category.status === 'active' ? 'inactive' : 'active'
+//       ElMessage.error('状态更新失败')
+//     } finally {
+//       // 清除定时器
+//       statusUpdateTimeouts.delete(category.id)
+//     }
+//   }, 500)
+  
+//   statusUpdateTimeouts.set(category.id, timeout)
+//   return true // 允许状态切换
+// }
 
 // 保留原来的updateStatus函数以防其他地方使用
-const updateStatus = async (category: Category) => {
-  // 防止重复调用
-  if (!category.id) return
+// const updateStatus = async (category: Category) => {
+//   // 防止重复调用
+//   if (!category.id) return
   
-  // 如果正在初始加载，不触发更新
-  if (isInitialLoading.value) return
+//   // 如果正在初始加载，不触发更新
+//   if (isInitialLoading.value) return
   
-  // 清除之前的定时器
-  const existingTimeout = statusUpdateTimeouts.get(category.id)
-  if (existingTimeout) {
-    clearTimeout(existingTimeout)
-  }
+//   // 清除之前的定时器
+//   const existingTimeout = statusUpdateTimeouts.get(category.id)
+//   if (existingTimeout) {
+//     clearTimeout(existingTimeout)
+//   }
   
-  // 设置新的定时器，延迟500ms执行
-  const timeout = setTimeout(async () => {
-    try {
-      await updateCategory(category.id, { status: category.status })
-      ElMessage.success('状态更新成功')
-    } catch (error) {
-      // 如果更新失败，恢复原状态
-      category.status = category.status === 'active' ? 'inactive' : 'active'
-      ElMessage.error('状态更新失败')
-    } finally {
-      // 清除定时器
-      statusUpdateTimeouts.delete(category.id)
-    }
-  }, 500)
+//   // 设置新的定时器，延迟500ms执行
+//   const timeout = setTimeout(async () => {
+//     try {
+//       await updateCategory(category.id, { status: category.status })
+//       ElMessage.success('状态更新成功')
+//     } catch (error) {
+//       // 如果更新失败，恢复原状态
+//       category.status = category.status === 'active' ? 'inactive' : 'active'
+//       ElMessage.error('状态更新失败')
+//     } finally {
+//       // 清除定时器
+//       statusUpdateTimeouts.delete(category.id)
+//     }
+//   }, 500)
   
-  statusUpdateTimeouts.set(category.id, timeout)
-}
-
-const previewIcon = () => {
-  if (dialog.value.form.icon) {
-    // 可以在这里添加图标预览逻辑
-    console.log('预览图标:', dialog.value.form.icon)
-  }
-}
+//   statusUpdateTimeouts.set(category.id, timeout)
+// }
 
 const expandAll = () => {
   nextTick(() => {
@@ -530,15 +585,11 @@ const collapseAll = () => {
   })
 }
 
-// 组件卸载时清理定时器
+// 组件卸载时清理定时器 - 暂时注释状态相关
 onUnmounted(() => {
   // 清除所有状态更新定时器
-  statusUpdateTimeouts.forEach(timeout => clearTimeout(timeout))
-  statusUpdateTimeouts.clear()
-  
-  // 清除所有排序更新定时器
-  sortOrderUpdateTimeouts.forEach(timeout => clearTimeout(timeout))
-  sortOrderUpdateTimeouts.clear()
+  // statusUpdateTimeouts.forEach(timeout => clearTimeout(timeout))
+  // statusUpdateTimeouts.clear()
 })
 
 onMounted(() => {
@@ -568,6 +619,13 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.category-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 12px;
 }
 
 .category-name {
@@ -600,11 +658,42 @@ onMounted(() => {
 }
 
 :deep(.el-input-number) {
-  width: 80px;
+  width: 100px;
 }
 
 :deep(.el-input-number .el-input__inner) {
   text-align: center;
+  padding: 0 8px;
+}
+
+:deep(.el-input-number .el-input-number__decrease),
+:deep(.el-input-number .el-input-number__increase) {
+  width: 20px;
+  background: #f5f7fa;
+  border-color: #dcdfe6;
+}
+
+/* 对话框中的输入数字样式 */
+:deep(.el-dialog .el-input-number) {
+  width: 120px;
+}
+
+:deep(.el-dialog .el-input-number .el-input__inner) {
+  text-align: center;
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+/* 对话框排序输入框专用样式 */
+:deep(.dialog-sort-input) {
+  width: 140px !important;
+}
+
+:deep(.dialog-sort-input .el-input__inner) {
+  text-align: center !important;
+  padding: 0 12px !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
 }
 
 :deep(.el-table .el-table__row--level-0 .el-table__cell:first-child) {

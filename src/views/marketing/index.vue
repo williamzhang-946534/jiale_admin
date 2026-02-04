@@ -40,12 +40,12 @@
 
       <el-card class="stat-card">
         <div class="stat-content">
-          <div class="stat-icon banners">
-            <el-icon><Picture /></el-icon>
+          <div class="stat-icon special">
+            <el-icon><Star /></el-icon>
           </div>
           <div class="stat-info">
-            <div class="stat-value">{{ stats.totalBanners || 0 }}</div>
-            <div class="stat-label">轮播图数量</div>
+            <div class="stat-value">{{ stats.totalSpecialOffers || 0 }}</div>
+            <div class="stat-label">限时特惠</div>
           </div>
         </div>
       </el-card>
@@ -194,12 +194,16 @@
           <el-table :data="specialOffers" v-loading="specialOfferLoading" stripe>
             <el-table-column label="服务图片" width="120">
               <template #default="{ row }">
-                <el-image
-                  :src="row.image"
-                  fit="cover"
-                  class="special-offer-preview"
-                  :preview-src-list="[row.image]"
-                />
+                <div 
+                  class="special-offer-image-wrapper"
+                  @click="openImagePreview([row.image], 0)"
+                >
+                  <el-image
+                    :src="row.image"
+                    fit="cover"
+                    class="special-offer-preview"
+                  />
+                </div>
               </template>
             </el-table-column>
 
@@ -293,72 +297,6 @@
             />
           </div>
         </el-tab-pane>
-
-        <!-- 轮播图管理 -->
-        <el-tab-pane label="轮播图管理" name="banners">
-          <div class="tab-toolbar">
-            <div class="toolbar-left">
-              <el-button type="primary" @click="openBannerDialog">添加轮播图</el-button>
-              <el-button @click="loadBanners" :loading="bannerLoading">刷新</el-button>
-            </div>
-            <div class="toolbar-right">
-              <el-select v-model="bannerStatus" placeholder="筛选状态" style="width: 120px" @change="loadBanners">
-                <el-option label="全部" value="" />
-                <el-option label="已发布" value="published" />
-                <el-option label="草稿" value="draft" />
-              </el-select>
-            </div>
-          </div>
-
-          <el-table :data="banners" v-loading="bannerLoading" stripe>
-            <el-table-column label="预览图" width="120">
-              <template #default="{ row }">
-                <el-image
-                  :src="row.imageUrl"
-                  fit="cover"
-                  class="banner-preview"
-                  :preview-src-list="[row.imageUrl]"
-                />
-              </template>
-            </el-table-column>
-
-            <el-table-column prop="title" label="标题" min-width="150" />
-
-            <el-table-column prop="linkUrl" label="链接地址" min-width="200">
-              <template #default="{ row }">
-                <el-link :href="row.linkUrl" target="_blank" type="primary">
-                  {{ row.linkUrl }}
-                </el-link>
-              </template>
-            </el-table-column>
-
-            <el-table-column prop="sortOrder" label="排序" width="100" align="center" />
-
-            <el-table-column prop="status" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-switch
-                  :model-value="row.status"
-                  active-value="published"
-                  inactive-value="draft"
-                  @change="(value) => updateBannerStatus({ ...row, status: value })"
-                />
-              </template>
-            </el-table-column>
-
-            <el-table-column prop="createdAt" label="创建时间" width="180" />
-
-            <el-table-column label="操作" width="150" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="editBanner(row)">
-                  编辑
-                </el-button>
-                <el-button link type="danger" size="small" @click="deleteBanner(row)">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
       </el-tabs>
     </el-card>
 
@@ -376,8 +314,8 @@
 
         <el-form-item label="优惠类型" required>
           <el-radio-group v-model="couponDialog.form.type">
-            <el-radio label="full">满减券</el-radio>
-            <el-radio label="discount">折扣券</el-radio>
+            <el-radio value="full">满减券</el-radio>
+            <el-radio value="discount">折扣券</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -545,8 +483,8 @@
 
         <el-form-item label="状态">
           <el-radio-group v-model="specialOfferDialog.form.status">
-            <el-radio label="active">上架</el-radio>
-            <el-radio label="inactive">下架</el-radio>
+            <el-radio value="active">上架</el-radio>
+            <el-radio value="inactive">下架</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -559,97 +497,48 @@
       </template>
     </el-dialog>
 
-    <!-- 轮播图编辑对话框 -->
-    <el-dialog
-      v-model="bannerDialog.visible"
-      :title="bannerDialog.title"
-      width="600px"
-      :close-on-click-modal="false"
-    >
-      <el-form :model="bannerDialog.form" label-width="100px">
-        <el-form-item label="标题" required>
-          <el-input v-model="bannerDialog.form.title" placeholder="请输入轮播图标题" />
-        </el-form-item>
-
-        <el-form-item label="图片" required>
-          <el-upload
-            v-model:file-list="bannerDialog.imageFiles"
-            :auto-upload="false"
-            list-type="picture-card"
-            :limit="1"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-upload>
-        </el-form-item>
-
-        <el-form-item label="链接地址">
-          <el-input v-model="bannerDialog.form.linkUrl" placeholder="请输入链接地址" />
-        </el-form-item>
-
-        <el-form-item label="排序">
-          <el-input-number v-model="bannerDialog.form.sortOrder" :min="0" style="width: 100%" />
-        </el-form-item>
-
-        <el-form-item label="展示时间">
-          <el-date-picker
-            v-model="bannerDialog.dateRange"
-            type="datetimerange"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            style="width: 100%"
-          />
-        </el-form-item>
-
-        <el-form-item label="状态">
-          <el-radio-group v-model="bannerDialog.form.status">
-            <el-radio label="published">已发布</el-radio>
-            <el-radio label="draft">草稿</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="bannerDialog.visible = false">取消</el-button>
-        <el-button type="primary" :loading="bannerDialog.loading" @click="submitBanner">
-          保存
-        </el-button>
-      </template>
-    </el-dialog>
+    <!-- 图片预览组件 -->
+    <ImagePreview 
+      v-model:visible="imagePreviewVisible"
+      :images="previewImages"
+      :initial-index="previewIndex"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Ticket, Check, Select, Picture, Plus } from '@element-plus/icons-vue'
+import { Ticket, Check, Select, Picture, Plus, Star } from '@element-plus/icons-vue'
+import ImagePreview from '@/components/ImagePreview.vue'
 import { 
   getCoupons,
   createCoupon,
   updateCoupon,
   deleteCoupon as deleteCouponApi,
   publishCoupon as publishCouponApi,
-  getBanners,
-  createBanner,
-  updateBanner,
-  updateBannerStatus as updateBannerStatusApi,
-  deleteBanner as deleteBannerApi,
   getSpecialOffers,
   createSpecialOffer,
   updateSpecialOffer,
   deleteSpecialOffer as deleteSpecialOfferApi,
   updateSpecialOfferStatus as updateSpecialOfferStatusApi
 } from '@/api/modules/marketing'
-import type { Coupon, Banner, SpecialOffer } from '@/types/api'
+import type { Coupon, SpecialOffer } from '@/types/api'
 
 const activeTab = ref('coupons')
 
-// 统计数据 - 使用固定值，因为接口文档中没有营销统计接口
+// 图片预览相关状态
+const imagePreviewVisible = ref(false)
+const previewImages = ref<string[]>([])
+const previewIndex = ref(0)
+
+// 统计数据
 const stats = ref({
   totalCoupons: 0,
   activeCoupons: 0,
   usedCoupons: 0,
-  totalBanners: 0
+  totalSpecialOffers: 0,
+  activeSpecialOffers: 0
 })
 
 // 优惠券相关
@@ -710,32 +599,46 @@ const specialOfferDialog = reactive({
   }
 })
 
-// 轮播图相关
-const banners = ref<Banner[]>([])
-const bannerLoading = ref(false)
-const bannerStatus = ref('')
-
-const bannerDialog = reactive({
-  visible: false,
-  loading: false,
-  title: '',
-  imageFiles: [] as any[],
-  dateRange: null as [Date, Date] | null,
-  form: {
-    title: '',
-    imageUrl: '',
-    linkUrl: '',
-    sortOrder: 0,
-    startTime: '',
-    endTime: '',
-    status: 'draft' as 'published' | 'draft'
+const loadStats = async () => {
+  try {
+    // 获取各模块数据来计算统计值
+    const [couponsData, specialOffersData] = await Promise.all([
+      getCoupons(),
+      getSpecialOffers()
+    ])
+    
+    // 计算优惠券统计
+    const couponsList = couponsData.list || couponsData || []
+    const totalCoupons = couponsList.length
+    const activeCoupons = couponsList.filter(c => c.status === 'active').length
+    const usedCoupons = couponsList.reduce((sum, c) => sum + (c.usedQuantity || 0), 0)
+    
+    // 计算限时特惠统计
+    const specialOffersList = specialOffersData.list || specialOffersData || []
+    const totalSpecialOffers = specialOffersList.length
+    const activeSpecialOffers = specialOffersList.filter(s => s.status === 'active').length
+    
+    // 更新统计数据
+    stats.value = {
+      totalCoupons,
+      activeCoupons,
+      usedCoupons,
+      totalSpecialOffers,
+      activeSpecialOffers
+    }
+    
+    console.log('营销统计数据:', stats.value)
+  } catch (error) {
+    console.error('获取营销统计数据失败:', error)
+    // 设置默认值
+    stats.value = {
+      totalCoupons: 0,
+      activeCoupons: 0,
+      usedCoupons: 0,
+      totalSpecialOffers: 0,
+      activeSpecialOffers: 0
+    }
   }
-})
-
-const loadStats = () => {
-  // 接口文档中没有营销统计接口，暂时使用固定值
-  // 可以从其他接口获取数据来计算统计值
-  console.log('营销统计数据暂未实现')
 }
 
 const loadCoupons = async () => {
@@ -917,23 +820,6 @@ const handleSpecialOfferSizeChange = (size: number) => {
   loadSpecialOffers()
 }
 
-const loadBanners = async () => {
-  bannerLoading.value = true
-  try {
-    const params = {
-      status: bannerStatus.value || undefined
-    }
-    
-    const data = await getBanners(params)
-    banners.value = data.list || data // 处理可能的分页响应格式
-  } catch (error) {
-    ElMessage.error('获取轮播图列表失败')
-    console.error('获取轮播图列表失败:', error)
-  } finally {
-    bannerLoading.value = false
-  }
-}
-
 const openCouponDialog = () => {
   couponDialog.title = '创建优惠券'
   couponDialog.form = {
@@ -1054,26 +940,23 @@ const openBannerDialog = () => {
     status: 'draft'
   }
   bannerDialog.dateRange = null
-  bannerDialog.imageFiles = []
   bannerDialog.visible = true
 }
 
 const editBanner = (banner: Banner) => {
+  console.log('编辑轮播图数据:', banner)
   bannerDialog.title = '编辑轮播图'
   bannerDialog.form = {
-    title: banner.title,
-    imageUrl: banner.imageUrl,
-    linkUrl: banner.linkUrl,
-    sortOrder: banner.sortOrder,
-    startTime: '', // Banner接口中没有这些字段，使用空值
-    endTime: '',
-    status: banner.status
+    title: banner.title || '',
+    imageUrl: banner.imageUrl || '',
+    linkUrl: banner.linkUrl || '',
+    sortOrder: banner.sortOrder || 0,
+    startTime: banner.startTime || '',
+    endTime: banner.endTime || '',
+    status: banner.status || 'draft'
   }
-  bannerDialog.dateRange = null // Banner接口中没有时间范围字段
-  bannerDialog.imageFiles = banner.imageUrl ? [{
-    name: 'banner',
-    url: banner.imageUrl
-  }] : []
+  bannerDialog.dateRange = null
+  console.log('表单数据已设置:', bannerDialog.form)
   bannerDialog.visible = true
 }
 
@@ -1187,6 +1070,15 @@ const handleCouponSizeChange = (size: number) => {
   loadCoupons()
 }
 
+// 图片预览相关方法
+const openImagePreview = (images: string[], index: number = 0) => {
+  if (!images || images.length === 0) return
+  
+  previewImages.value = images
+  previewIndex.value = index
+  imagePreviewVisible.value = true
+}
+
 onMounted(() => {
   loadStats()
   // 直接加载优惠券数据，不通过 loadCoupons 函数
@@ -1267,6 +1159,10 @@ onMounted(() => {
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
+.stat-icon.special {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
 .stat-info {
   flex: 1;
 }
@@ -1339,6 +1235,21 @@ onMounted(() => {
   width: 80px;
   height: 60px;
   border-radius: 4px;
+  cursor: pointer;
+}
+
+.special-offer-image-wrapper {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.special-offer-image-wrapper:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .price-info {

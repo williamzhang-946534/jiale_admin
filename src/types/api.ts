@@ -374,6 +374,8 @@ export interface Banner {
   title?: string
   sortOrder: number
   status: 'published' | 'draft' // 修正状态值
+  startTime?: string
+  endTime?: string
   createdAt?: string
 }
 
@@ -454,6 +456,80 @@ export interface SystemSettings {
   notificationEmail: string
 }
 
+// ===== 上传相关 =====
+export type UploadType = 
+  | 'mobile/avatars'
+  | 'mobile/services'
+  | 'mobile/feedback'
+  | 'admin/banners'
+  | 'admin/categories'
+  | 'admin/configs'
+  | 'common/icons'
+  | 'common/static'
+  | 'temp'
+
+export interface UploadResponse {
+  key: string
+  url: string
+  size: number
+  contentType: string
+}
+
+export interface UploadParams {
+  file: File
+  type: UploadType
+  originalName?: string
+}
+
+export interface MultipleUploadParams extends UploadParams {
+  files: File[]
+  maxCount?: number
+}
+
+export interface StsCredentialsParams {
+  prefix: string
+  expire?: string
+}
+
+export interface StsCredentialsResponse {
+  accessKeyId: string
+  accessKeySecret: string
+  securityToken: string
+  expiration: string
+}
+
+export interface DeleteFileParams {
+  key: string
+}
+
+export interface BatchDeleteFilesParams {
+  keys: string[]
+}
+
+// 文件限制配置
+export const UPLOAD_LIMITS = {
+  avatar: {
+    maxSize: 2 * 1024 * 1024, // 2MB
+    acceptTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  },
+  service: {
+    maxSize: 5 * 1024 * 1024, // 5MB
+    acceptTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  },
+  banner: {
+    maxSize: 5 * 1024 * 1024, // 5MB
+    acceptTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  },
+  feedback: {
+    maxSize: 10 * 1024 * 1024, // 10MB
+    acceptTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'audio/mp3']
+  },
+  certification: {
+    maxSize: 5 * 1024 * 1024, // 5MB
+    acceptTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+  }
+} as const
+
 // 服务者统计相关类型
 export interface ProviderDailyStats {
   date: string
@@ -476,4 +552,114 @@ export interface ProviderMonthlyStats {
 export interface ProviderStatsUpdate {
   orderAmount: number
   orderType: string
+}
+
+// ==================== 首页专区 ====================
+
+// 新人专享服务
+export interface NewcomerOffer {
+  id: string
+  serviceId: string
+  serviceName: string
+  originalPrice: number
+  newcomerPrice: number
+  stockLimit: number
+  claimedCount: number
+  image?: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+}
+
+// 闪购场次
+export interface FlashSaleSession {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  status: 'pending' | 'active' | 'ended'
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+// 闪购商品
+export interface FlashSaleProduct {
+  id: string
+  sessionId: string
+  serviceId: string
+  serviceName: string
+  originalPrice: number
+  flashPrice: number
+  stockTotal: number
+  stockSold: number
+  image?: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+}
+
+// 企业服务分类
+export interface EnterpriseCategory {
+  id: string
+  name: string
+  description: string
+  icon: string
+  sortOrder: number
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+}
+
+// 企业询价
+export interface EnterpriseInquiry {
+  id: string
+  companyName: string
+  contactName: string
+  contactPhone: string
+  serviceIds: string[]
+  area: number
+  address: string
+  requirements: string
+  status: 'pending' | 'assigned' | 'processing' | 'completed'
+  assignedSalesId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// 高端管家服务分类
+export interface PremiumCategory {
+  id: string
+  name: string
+  tag: string
+  description: string
+  image?: string
+  minServiceHours: number
+  advanceBookingDays: number
+  depositAmount: number
+  sortOrder: number
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+}
+
+// 管家申请
+export interface PremiumApplication {
+  id: string
+  serviceId: string
+  serviceName: string
+  contactInfo: {
+    name: string
+    phone: string
+    email?: string
+  }
+  requirements: string
+  budgetRange: string
+  status: 'pending' | 'approved' | 'rejected' | 'processing'
+  assignedManagerId?: string
+  rejectionReason?: string
+  createdAt: string
+  updatedAt: string
 }

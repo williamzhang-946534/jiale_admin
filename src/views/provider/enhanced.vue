@@ -780,19 +780,16 @@
                 <h4>身份证照片</h4>
                 <div class="image-grid">
                   <div v-if="detailDialog.provider.idCardImageUrl" class="image-item">
-                    <el-image
-                      :src="detailDialog.provider.idCardImageUrl"
-                      :preview-src-list="[detailDialog.provider.idCardImageUrl]"
-                      fit="cover"
-                      class="document-image"
+                    <div 
+                      class="document-image-wrapper"
+                      @click="openImagePreview([detailDialog.provider.idCardImageUrl], 0)"
                     >
-                      <template #error>
-                        <div class="image-error">
-                          <el-icon><Picture /></el-icon>
-                          <span>图片加载失败</span>
-                        </div>
-                      </template>
-                    </el-image>
+                      <el-image
+                        :src="detailDialog.provider.idCardImageUrl"
+                        fit="cover"
+                        class="document-image"
+                      />
+                    </div>
                   </div>
                   <div v-else class="no-image">
                     <el-icon><Picture /></el-icon>
@@ -805,21 +802,25 @@
                 <h4>资质证书</h4>
                 <div class="image-grid">
                   <div v-if="detailDialog.provider.certFiles && detailDialog.provider.certFiles.length > 0" class="image-item">
-                    <el-image
+                    <div 
                       v-for="(cert, index) in detailDialog.provider.certFiles"
                       :key="index"
-                      :src="cert"
-                      :preview-src-list="detailDialog.provider.certFiles"
-                      fit="cover"
-                      class="document-image"
+                      class="document-image-wrapper"
+                      @click="openImagePreview(detailDialog.provider.certFiles, index)"
                     >
-                      <template #error>
-                        <div class="image-error">
-                          <el-icon><Picture /></el-icon>
-                          <span>图片加载失败</span>
-                        </div>
-                      </template>
-                    </el-image>
+                      <el-image
+                        :src="cert"
+                        fit="cover"
+                        class="document-image"
+                      >
+                        <template #error>
+                          <div class="image-error">
+                            <el-icon><Picture /></el-icon>
+                            <span>图片加载失败</span>
+                          </div>
+                        </template>
+                      </el-image>
+                    </div>
                   </div>
                   <div v-else class="no-image">
                     <el-icon><Picture /></el-icon>
@@ -921,6 +922,13 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片预览组件 -->
+    <ImagePreview 
+      v-model:visible="imagePreviewVisible"
+      :images="previewImages"
+      :initial-index="previewIndex"
+    />
   </div>
 </template>
 
@@ -928,6 +936,7 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight, Search, Edit, Close, Phone, Star, Calendar, Collection, DataAnalysis, Wallet, Location } from '@element-plus/icons-vue'
+import ImagePreview from '@/components/ImagePreview.vue'
 import { getProviders, auditProvider, banProvider, getProviderDetail, updateProvider } from '@/api/modules/provider'
 import type { Provider, ProviderDetail, ProviderAuditParams } from '@/types/api'
 
@@ -954,6 +963,11 @@ const statusOptions = [
   { label: '已拒绝', value: 'rejected' },
   { label: '已封禁', value: 'banned' },
 ]
+
+// 图片预览相关状态
+const imagePreviewVisible = ref(false)
+const previewImages = ref<string[]>([])
+const previewIndex = ref(0)
 
 // 响应式数据
 const loading = ref(false)
@@ -1575,6 +1589,15 @@ const handleCurrentChange = (page: number) => {
   loadData()
 }
 
+// 图片预览相关方法
+const openImagePreview = (images: string[], index: number = 0) => {
+  if (!images || images.length === 0) return
+  
+  previewImages.value = images
+  previewIndex.value = index
+  imagePreviewVisible.value = true
+}
+
 onMounted(() => {
   loadData()
 })
@@ -1830,6 +1853,26 @@ onMounted(() => {
   border-radius: 8px;
   margin-right: 12px;
   margin-bottom: 12px;
+}
+
+.document-image-wrapper {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.document-image-wrapper:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.document-image {
+  width: 200px;
+  height: 150px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {

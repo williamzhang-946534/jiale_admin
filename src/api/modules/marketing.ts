@@ -54,8 +54,8 @@ export const createBanner = (data: Omit<Banner, 'bannerId'>) => {
  * 更新轮播图
  */
 export const updateBanner = (id: string, data: Partial<Banner>) => {
-  // 根据接口文档，使用 POST 方法进行更新
-  return post<Banner>(`/marketing/banners/${id}`, data)
+  // 使用 PUT 方法进行更新，匹配后端接口
+  return put<Banner>(`/marketing/banners/${id}`, data)
 }
 
 /**

@@ -68,7 +68,9 @@ import {
   Ticket,
   Tools,
   Lock,
-  Menu
+  Menu,
+  House,
+  Star
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -97,7 +99,9 @@ const iconMap: Record<string, any> = {
   Ticket,
   Tools,
   Lock,
-  Menu
+  Menu,
+  House,
+  Star
 }
 
 // 当前激活的菜单

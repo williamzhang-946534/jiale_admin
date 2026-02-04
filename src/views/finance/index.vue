@@ -282,6 +282,7 @@ const loadChartData = async () => {
     chartData.value = data
     renderChart()
   } catch (error) {
+    console.error('获取图表数据失败:', error)
     ElMessage.error('获取图表数据失败')
     // Mock数据
     chartData.value = {
@@ -294,7 +295,7 @@ const loadChartData = async () => {
 
 const renderChart = () => {
   nextTick(() => {
-    if (chartContainer.value) {
+    if (chartContainer.value && chartData.value?.values && chartData.value.values.length > 0) {
       // 简单的CSS图表实现
       const container = chartContainer.value
       const maxValue = Math.max(...chartData.value.values)

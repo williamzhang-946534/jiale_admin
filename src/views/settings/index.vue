@@ -167,14 +167,13 @@
               </el-form-item>
 
               <el-form-item label="系统Logo">
-                <el-upload
-                  v-model:file-list="logoFiles"
-                  :auto-upload="false"
-                  list-type="picture-card"
+                <ImageUpload 
+                  v-model="systemForm.systemLogo"
+                  upload-type="admin/configs"
                   :limit="1"
-                >
-                  <el-icon><Plus /></el-icon>
-                </el-upload>
+                  tip="支持jpg、png、gif、webp格式，文件大小不超过5MB"
+                  upload-text="上传系统Logo"
+                />
               </el-form-item>
 
               <el-form-item label="客服电话">
@@ -305,8 +304,8 @@
 
         <el-form-item label="状态">
           <el-radio-group v-model="adminDialog.form.status">
-            <el-radio label="active">启用</el-radio>
-            <el-radio label="disabled">禁用</el-radio>
+            <el-radio value="active">启用</el-radio>
+            <el-radio value="disabled">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -324,7 +323,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import ImageUpload from '@/components/ImageUpload.vue'
 import { useAuthStore } from '@/store/auth'
 import { 
   getMembershipSettings,
@@ -400,7 +399,6 @@ const systemForm = reactive({
   notificationEmail: 'admin@jiale.com'
 })
 const systemLoading = ref(false)
-const logoFiles = ref([] as any[])
 
 const loadMembership = async () => {
   membershipLoading.value = true

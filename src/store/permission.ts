@@ -122,6 +122,44 @@ export const usePermissionStore = defineStore('permission', () => {
               path: '/marketing/overview',
               component: 'marketing/index',
             },
+            {
+              id: 'marketing-banners',
+              name: '轮播图管理',
+              path: '/marketing/banners',
+              component: 'marketing/banner',
+            },
+          ],
+        },
+        {
+          id: 'home-zones',
+          name: '首页专区',
+          path: '/home-zones',
+          icon: 'House',
+          children: [
+            {
+              id: 'newcomer-zone',
+              name: '新人专区',
+              path: '/home-zones/newcomer',
+              component: 'home-zones/newcomer',
+            },
+            {
+              id: 'flash-sale',
+              name: '闪购秒杀',
+              path: '/home-zones/flash-sale',
+              component: 'home-zones/flash-sale',
+            },
+            {
+              id: 'enterprise',
+              name: '企业定制',
+              path: '/home-zones/enterprise',
+              component: 'home-zones/enterprise',
+            },
+            {
+              id: 'premium',
+              name: '高端管家',
+              path: '/home-zones/premium',
+              component: 'home-zones/premium',
+            },
           ],
         },
         {
@@ -193,6 +231,11 @@ export const usePermissionStore = defineStore('permission', () => {
             'service/index': () => import('@/views/service/index.vue'),
             'finance/index': () => import('@/views/finance/index.vue'),
             'marketing/index': () => import('@/views/marketing/index.vue'),
+            'marketing/banner': () => import('@/views/marketing/banner.vue'),
+            'home-zones/newcomer': () => import('@/views/home-zones/newcomer.vue'),
+            'home-zones/flash-sale': () => import('@/views/home-zones/flash-sale.vue'),
+            'home-zones/enterprise': () => import('@/views/home-zones/enterprise.vue'),
+            'home-zones/premium': () => import('@/views/home-zones/premium.vue'),
             'settings/index': () => import('@/views/settings/index.vue'),
             'permission/admins': () => import('@/views/permission/admins.vue'),
             'permission/roles': () => import('@/views/permission/roles.vue'),
@@ -232,6 +275,11 @@ export const usePermissionStore = defineStore('permission', () => {
           'service/index': () => import('@/views/service/index.vue'),
           'finance/index': () => import('@/views/finance/index.vue'),
           'marketing/index': () => import('@/views/marketing/index.vue'),
+          'marketing/banner': () => import('@/views/marketing/banner.vue'),
+          'home-zones/newcomer': () => import('@/views/home-zones/newcomer.vue'),
+          'home-zones/flash-sale': () => import('@/views/home-zones/flash-sale.vue'),
+          'home-zones/enterprise': () => import('@/views/home-zones/enterprise.vue'),
+          'home-zones/premium': () => import('@/views/home-zones/premium.vue'),
           'settings/index': () => import('@/views/settings/index.vue'),
           'permission/admins': () => import('@/views/permission/admins.vue'),
           'permission/roles': () => import('@/views/permission/roles.vue'),
@@ -252,6 +300,42 @@ export const usePermissionStore = defineStore('permission', () => {
 
       return routes
     })
+
+    // 手动添加首页专区路由（确保始终显示）
+    const homeZonesRoute: RouteRecordRaw = {
+      path: '/home-zones',
+      name: 'home-zones',
+      redirect: '/home-zones/newcomer',
+      meta: { title: '首页专区', icon: 'House' },
+      children: [
+        {
+          path: '/home-zones/newcomer',
+          name: 'newcomer-zone',
+          component: () => import('@/views/home-zones/newcomer.vue'),
+          meta: { title: '新人专区', icon: 'Present' }
+        },
+        {
+          path: '/home-zones/flash-sale',
+          name: 'flash-sale',
+          component: () => import('@/views/home-zones/flash-sale.vue'),
+          meta: { title: '闪购秒杀', icon: 'Lightning' }
+        },
+        {
+          path: '/home-zones/enterprise',
+          name: 'enterprise',
+          component: () => import('@/views/home-zones/enterprise.vue'),
+          meta: { title: '企业定制', icon: 'OfficeBuilding' }
+        },
+        {
+          path: '/home-zones/premium',
+          name: 'premium',
+          component: () => import('@/views/home-zones/premium.vue'),
+          meta: { title: '高端管家', icon: 'Star' }
+        }
+      ]
+    }
+    
+    menuRoutes.push(homeZonesRoute)
 
     console.log('🎯 最终生成的路由:', menuRoutes.map(r => ({ path: r.path, name: r.name })))
     dynamicRoutes.value = menuRoutes

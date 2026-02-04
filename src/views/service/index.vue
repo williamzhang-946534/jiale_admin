@@ -14,15 +14,21 @@
           v-model="query.categoryId"
           placeholder="选择分类"
           clearable
-          style="width: 150px"
+          style="width: 200px"
           @change="handleSearch"
         >
-          <el-option
-            v-for="category in categories"
-            :key="category.id"
-            :label="category.name"
-            :value="category.id"
-          />
+          <el-option-group
+            v-for="(group, groupName) in groupedCategories"
+            :key="groupName"
+            :label="groupName"
+          >
+            <el-option
+              v-for="category in group"
+              :key="category.id"
+              :label="category.name"
+              :value="category.id"
+            />
+          </el-option-group>
         </el-select>
         <el-select
           v-model="query.status"
@@ -47,13 +53,24 @@
         <el-table-column prop="name" label="服务名称" min-width="200">
           <template #default="{ row }">
             <div class="service-name">
-              <el-image
+              <div 
                 v-if="row.images && row.images.length > 0"
-                :src="row.images[0]"
-                :preview-src-list="row.images"
-                fit="cover"
-                class="service-image"
-              />
+                class="service-image-wrapper"
+                @click="openImagePreview(row.images, 0)"
+              >
+                <el-image
+                  :src="row.images[0]"
+                  fit="cover"
+                  class="service-image"
+                />
+                <div class="image-overlay">
+                  <el-icon class="preview-icon"><ZoomIn /></el-icon>
+                  <span class="image-count">{{ row.images.length }}张</span>
+                </div>
+              </div>
+              <div v-else class="no-image">
+                <el-icon><Picture /></el-icon>
+              </div>
               <div class="service-info">
                 <div class="name">{{ row.name }}</div>
                 <div class="tags">
@@ -93,7 +110,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="description" label="描述" min-width="200">
+          <template #default="{ row }">
+            <div class="description-cell">
+              {{ row.description || '暂无描述' }}
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="createTime" label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDateTime(row.createTime) }}
+          </template>
+        </el-table-column>
 
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
@@ -141,12 +170,18 @@
           <el-col :span="12">
             <el-form-item label="所属分类" required>
               <el-select v-model="dialog.form.categoryId" placeholder="选择分类" style="width: 100%">
-                <el-option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :label="category.name"
-                  :value="category.id"
-                />
+                <el-option-group
+                  v-for="(group, groupName) in groupedCategories"
+                  :key="groupName"
+                  :label="groupName"
+                >
+                  <el-option
+                    v-for="category in group"
+                    :key="category.id"
+                    :label="category.name"
+                    :value="category.id"
+                  />
+                </el-option-group>
               </el-select>
             </el-form-item>
           </el-col>
@@ -171,22 +206,22 @@
           <el-col :span="8">
             <el-form-item label="状态">
               <el-radio-group v-model="dialog.form.status">
-                <el-radio label="active">上架</el-radio>
-                <el-radio label="inactive">下架</el-radio>
+                <el-radio value="active">上架</el-radio>
+                <el-radio value="inactive">下架</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-form-item label="服务图片">
-          <el-upload
-            v-model:file-list="dialog.imageFiles"
-            :auto-upload="false"
-            list-type="picture-card"
+          <ImageUpload 
+            v-model="dialog.form.images"
+            upload-type="mobile/services"
+            :multiple="true"
             :limit="5"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-upload>
+            tip="支持jpg、png、gif、webp格式，文件大小不超过5MB"
+            upload-text="上传服务图片"
+          />
         </el-form-item>
 
         <el-form-item label="服务标签">
@@ -257,26 +292,45 @@
 
         <div v-if="currentService.images && currentService.images.length > 0" class="service-images">
           <h4>服务图片</h4>
-          <el-image
-            v-for="(image, index) in currentService.images"
-            :key="index"
-            :src="image"
-            :preview-src-list="currentService.images"
-            fit="cover"
-            class="detail-image"
-          />
+          <div class="image-grid">
+            <div 
+              v-for="(image, index) in currentService.images" 
+              :key="index"
+              class="image-item"
+              @click="openImagePreview(currentService.images, index)"
+            >
+              <el-image
+                :src="image"
+                fit="cover"
+                class="detail-image"
+              />
+              <div class="image-overlay">
+                <el-icon class="preview-icon"><ZoomIn /></el-icon>
+                <span class="image-index">{{ index + 1 }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </el-dialog>
+
+    <!-- 图片预览组件 -->
+    <ImagePreview 
+      v-model:visible="imagePreviewVisible"
+      :images="previewImages"
+      :initial-index="previewIndex"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElInput } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { ZoomIn, Picture } from '@element-plus/icons-vue'
+import ImageUpload from '@/components/ImageUpload.vue'
+import ImagePreview from '@/components/ImagePreview.vue'
 import { getServices, createService, updateService, updateServiceStatus, deleteService as deleteServiceApi } from '@/api/modules/service'
-import { getCategories } from '@/api/modules/category'
+import { getCategories, getCategoryTree } from '@/api/modules/category'
 import type { Service, Category } from '@/types/api'
 
 const tagInputRef = ref<InstanceType<typeof ElInput>>()
@@ -286,6 +340,36 @@ const services = ref<Service[]>([])
 const categories = ref<Category[]>([])
 const currentService = ref<Service | null>(null)
 const detailVisible = ref(false)
+
+// 图片预览相关状态
+const imagePreviewVisible = ref(false)
+const previewImages = ref<string[]>([])
+const previewIndex = ref(0)
+
+// 计算属性：按一级分类分组显示二级分类
+const groupedCategories = computed(() => {
+  const groups: { [key: string]: Category[] } = {}
+  
+  // 获取所有一级分类
+  const firstLevelCategories = categories.value.filter(category => !category.parentId)
+  
+  // 为每个一级分类找到对应的二级分类
+  firstLevelCategories.forEach(firstLevel => {
+    const secondLevel = categories.value.filter(category => 
+      category.parentId === firstLevel.id
+    )
+    if (secondLevel.length > 0) {
+      groups[firstLevel.name] = secondLevel
+    }
+  })
+  
+  return groups
+})
+
+// 计算属性：只显示二级分类（有parentId的分类）
+const secondLevelCategories = computed(() => {
+  return categories.value.filter(category => category.parentId && category.parentId !== null)
+})
 
 const query = reactive({
   keyword: '',
@@ -303,7 +387,6 @@ const dialog = reactive({
   visible: false,
   loading: false,
   title: '',
-  imageFiles: [] as any[],
   editingServiceId: '', // 添加当前编辑的服务ID
   form: {
     name: '',
@@ -353,8 +436,11 @@ const fetchServices = async () => {
     
     services.value = serviceList.map(service => ({
       ...service,
-      categoryName: getCategoryName(service.categoryId)
+      categoryName: getCategoryName(service.categoryId),
+      createTime: service.createdAt || new Date().toLocaleString()
     }))
+    
+    console.log('处理后的服务数据:', services.value)
     
     // 设置分页总数
     pagination.total = data.total || serviceList.length
@@ -362,23 +448,8 @@ const fetchServices = async () => {
   } catch (error) {
     console.error('获取服务列表失败:', error)
     ElMessage.error('获取服务列表失败')
-    // Mock数据
-    services.value = [
-      {
-        id: '1',
-        name: '家庭日常保洁',
-        categoryId: 'daily_clean',
-        categoryName: '日常保洁',
-        price: 45,
-        unit: '小时',
-        images: ['https://example.com/service1.jpg'],
-        description: '专业的家庭日常保洁服务',
-        tags: ['经验丰富', '工具齐全'],
-        status: 'active',
-        createTime: '2023-10-01 10:00:00'
-      }
-    ]
-    pagination.total = 1
+    services.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
@@ -386,35 +457,38 @@ const fetchServices = async () => {
 
 const fetchCategories = async () => {
   try {
-    const data = await getCategories()
-    console.log('管理员分类API返回数据:', data)
+    // 使用getCategoryTree获取树形结构数据
+    const data = await getCategoryTree()
     
     // 处理不同的数据结构
     let categoryList = []
-    if (data && data.data && Array.isArray(data.data)) {
-      // API返回格式: { data: [] }
+    if (Array.isArray(data)) {
+      categoryList = data
+    } else if (data && data.data && Array.isArray(data.data)) {
       categoryList = data.data
     } else if (data && data.list && Array.isArray(data.list)) {
-      // 标准分页格式: { list: [] }
       categoryList = data.list
-    } else if (Array.isArray(data)) {
-      // 直接返回数组
-      categoryList = data
     } else {
       console.error('分类数据结构异常:', data)
       categoryList = []
     }
     
-    categories.value = categoryList
+    // 如果是树形结构，需要扁平化处理
+    if (categoryList.length > 0 && (categoryList[0].children || categoryList[0].parentId === undefined)) {
+      categories.value = flattenCategories(categoryList)
+    } else {
+      categories.value = categoryList
+    }
   } catch (error) {
     console.error('获取分类列表失败:', error)
     ElMessage.error('获取分类列表失败')
     // Mock数据
     categories.value = [
+      { id: 'cleaning', name: '保洁清洗', parentId: null },
       { id: 'daily_clean', name: '日常保洁', parentId: 'cleaning' },
       { id: 'deep_clean', name: '深度保洁', parentId: 'cleaning' },
-      { id: 'nanny', name: '月嫂服务', parentId: null },
-      { id: 'moving', name: '搬家服务', parentId: null }
+      { id: 'nanny', name: '母婴护理', parentId: null },
+      { id: 'gold_matron', name: '金牌月嫂', parentId: 'nanny' }
     ]
   }
 }
@@ -456,7 +530,17 @@ const getCategoryName = (categoryId: string): string => {
   }
   
   const category = categories.value.find(c => c && c.id === categoryId)
-  return category?.name || '未知分类'
+  if (!category) return '未知分类'
+  
+  // 如果是二级分类，显示完整路径：一级分类 > 二级分类
+  if (category.parentId) {
+    const parentCategory = categories.value.find(c => c && c.id === category.parentId)
+    if (parentCategory) {
+      return `${parentCategory.name} > ${category.name}`
+    }
+  }
+  
+  return category.name
 }
 
 const handleSearch = () => {
@@ -477,37 +561,31 @@ const handleSizeChange = (size: number) => {
 
 const openCreate = () => {
   dialog.title = '新增服务'
-  dialog.form = {
-    name: '',
-    categoryId: '',
-    price: 0,
-    unit: '',
-    images: [],
-    tags: [],
-    description: '',
-    status: 'active'
-  }
-  dialog.imageFiles = []
+  // 重置表单字段，而不是重新赋值整个对象
+  dialog.form.name = ''
+  dialog.form.categoryId = ''
+  dialog.form.price = 0
+  dialog.form.unit = ''
+  dialog.form.images = []
+  dialog.form.tags = []
+  dialog.form.description = ''
+  dialog.form.status = 'active'
+  dialog.editingServiceId = ''
   dialog.visible = true
 }
 
 const editService = (service: Service) => {
   dialog.title = '编辑服务'
   dialog.editingServiceId = service.id // 保存当前编辑的服务ID
-  dialog.form = {
-    name: service.name,
-    categoryId: service.categoryId,
-    price: service.price,
-    unit: service.unit,
-    images: service.images || [],
-    tags: service.tags || [],
-    description: service.description || '',
-    status: service.status
-  }
-  dialog.imageFiles = (service.images || []).map((url, index) => ({
-    name: `image${index}`,
-    url
-  }))
+  // 重置表单字段，而不是重新赋值整个对象
+  dialog.form.name = service.name
+  dialog.form.categoryId = service.categoryId
+  dialog.form.price = service.price
+  dialog.form.unit = service.unit
+  dialog.form.images = service.images || []
+  dialog.form.tags = service.tags || []
+  dialog.form.description = service.description || ''
+  dialog.form.status = service.status
   dialog.visible = true
 }
 
@@ -605,9 +683,40 @@ const removeTag = (tag: string) => {
   }
 }
 
-onMounted(() => {
-  fetchCategories()
-  fetchServices()
+// 日期格式化函数
+const formatDateTime = (dateTime: string | undefined) => {
+  if (!dateTime) return '-'
+  
+  try {
+    const date = new Date(dateTime)
+    if (isNaN(date.getTime())) return dateTime
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  } catch (error) {
+    console.error('日期格式化错误:', error)
+    return dateTime
+  }
+}
+
+// 图片预览相关方法
+const openImagePreview = (images: string[], index: number = 0) => {
+  if (!images || images.length === 0) return
+  
+  previewImages.value = images
+  previewIndex.value = index
+  imagePreviewVisible.value = true
+}
+
+onMounted(async () => {
+  // 先获取分类数据，再获取服务数据
+  await fetchCategories()
+  await fetchServices()
 })
 </script>
 
@@ -652,6 +761,9 @@ onMounted(() => {
   width: 60px;
   height: 60px;
   border-radius: 8px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .service-info {
@@ -666,6 +778,16 @@ onMounted(() => {
 .service-info .tags {
   display: flex;
   gap: 4px;
+}
+
+.description-cell {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .price {
@@ -693,29 +815,191 @@ onMounted(() => {
   padding: 16px 0;
 }
 
-.service-images {
-  margin-top: 20px;
+/* 图片预览样式 */
+.service-image-wrapper {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.service-images h4 {
-  margin-bottom: 12px;
-  color: #303133;
+.service-image-wrapper:hover .image-overlay {
+  opacity: 1;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 8px;
+}
+
+.preview-icon {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.image-count {
+  font-size: 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.no-image {
+  width: 60px;
+  height: 60px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0c4cc;
+  font-size: 24px;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.image-item {
+  position: relative;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.image-item:hover .image-overlay {
+  opacity: 1;
+}
+
+.image-item:hover {
+  transform: scale(1.05);
 }
 
 .detail-image {
-  width: 100px;
+  width: 100%;
   height: 100px;
-  border-radius: 8px;
-  margin-right: 12px;
-  margin-bottom: 12px;
+  object-fit: cover;
+}
+
+.image-index {
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 :deep(.el-table) {
   font-size: 13px;
 }
 
+:deep(.el-table__row) {
+  position: relative;
+  z-index: 1;
+}
+
+:deep(.el-table__row.striped) {
+  z-index: 1;
+}
+
+:deep(.el-image) {
+  position: relative;
+  z-index: 1000 !important;
+}
+
+:deep(.el-image__inner) {
+  position: relative;
+  z-index: 1001 !important;
+}
+
+:deep(.el-image-viewer__wrapper) {
+  z-index: 2000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+:deep(.el-image-viewer__canvas) {
+  z-index: 2001 !important;
+}
+
+:deep(.el-image-viewer__mask) {
+  z-index: 1999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
 :deep(.el-upload--picture-card) {
   width: 80px;
   height: 80px;
+}
+</style>
+
+<style>
+/* 全局样式，确保图片预览在最上层 */
+.el-table__row {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.el-table__row.striped {
+  z-index: 1 !important;
+}
+
+.el-image {
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+.el-image__inner {
+  position: relative !important;
+  z-index: 1001 !important;
+}
+
+.el-image-viewer__wrapper {
+  z-index: 2000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+.el-image-viewer__canvas {
+  z-index: 2001 !important;
+}
+
+.el-image-viewer__mask {
+  z-index: 1999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+.el-table {
+  font-size: 13px;
 }
 </style>

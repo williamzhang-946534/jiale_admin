@@ -310,14 +310,18 @@
                 <h4>身份证照片</h4>
                 <div class="image-grid">
                   <div v-if="providerDetail?.idCardImages" class="image-item">
-                    <el-image
+                    <div 
                       v-for="(image, index) in providerDetail.idCardImages"
                       :key="index"
-                      :src="image"
-                      :preview-src-list="providerDetail.idCardImages"
-                      fit="cover"
-                      class="document-image"
-                    />
+                      class="document-image-wrapper"
+                      @click="openImagePreview(providerDetail.idCardImages, index)"
+                    >
+                      <el-image
+                        :src="image"
+                        fit="cover"
+                        class="document-image"
+                      />
+                    </div>
                   </div>
                   <el-empty v-else description="暂无身份证照片" />
                 </div>
@@ -327,14 +331,18 @@
                 <h4>资质证书</h4>
                 <div class="image-grid">
                   <div v-if="providerDetail?.certFiles" class="image-item">
-                    <el-image
+                    <div 
                       v-for="(image, index) in providerDetail.certFiles"
                       :key="index"
-                      :src="image"
-                      :preview-src-list="providerDetail.certFiles"
-                      fit="cover"
-                      class="document-image"
-                    />
+                      class="document-image-wrapper"
+                      @click="openImagePreview(providerDetail.certFiles, index)"
+                    >
+                      <el-image
+                        :src="image"
+                        fit="cover"
+                        class="document-image"
+                      />
+                    </div>
                   </div>
                   <el-empty v-else description="暂无资质证书" />
                 </div>
@@ -344,14 +352,18 @@
                 <h4>个人相册</h4>
                 <div class="image-grid">
                   <div v-if="providerDetail?.profile?.gallery" class="image-item">
-                    <el-image
+                    <div 
                       v-for="(image, index) in providerDetail.profile.gallery"
                       :key="index"
-                      :src="image"
-                      :preview-src-list="providerDetail.profile.gallery"
-                      fit="cover"
-                      class="gallery-image"
-                    />
+                      class="document-image-wrapper"
+                      @click="openImagePreview(providerDetail.profile.gallery, index)"
+                    >
+                      <el-image
+                        :src="image"
+                        fit="cover"
+                        class="gallery-image"
+                      />
+                    </div>
                   </div>
                   <el-empty v-else description="暂无个人相册" />
                 </div>
@@ -466,6 +478,13 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片预览组件 -->
+    <ImagePreview 
+      v-model:visible="imagePreviewVisible"
+      :images="previewImages"
+      :initial-index="previewIndex"
+    />
   </div>
 </template>
 
@@ -479,6 +498,7 @@ import {
   Star, 
   Edit 
 } from '@element-plus/icons-vue'
+import ImagePreview from '@/components/ImagePreview.vue'
 import { 
   getProviderDetail, 
   auditProvider, 
@@ -496,6 +516,11 @@ const saveLoading = ref(false)
 const editMode = ref(false)
 const activeTab = ref('basic')
 const providerDetail = ref<ProviderDetail | null>(null)
+
+// 图片预览相关状态
+const imagePreviewVisible = ref(false)
+const previewImages = ref<string[]>([])
+const previewIndex = ref(0)
 
 // 审核对话框
 const auditDialog = reactive({
@@ -872,6 +897,15 @@ const formatDate = (date?: string) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
+// 图片预览相关方法
+const openImagePreview = (images: string[], index: number = 0) => {
+  if (!images || images.length === 0) return
+  
+  previewImages.value = images
+  previewIndex.value = index
+  imagePreviewVisible.value = true
+}
+
 onMounted(() => {
   loadProviderDetail()
 })
@@ -1015,6 +1049,19 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.document-image-wrapper {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.document-image-wrapper:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .document-image,
