@@ -121,6 +121,9 @@ const customRequest = async (options: any) => {
     } else if (props.uploadType === 'mobile/services') {
       const { uploadServiceImage } = await import('@/api/modules/upload')
       response = await uploadServiceImage(file)
+    } else if (props.uploadType === 'premium/upload') {
+      const { uploadPremiumImage } = await import('@/api/modules/upload')
+      response = await uploadPremiumImage(file)
     } else if (props.multiple) {
       response = await uploadMultiple([file], props.uploadType)
     } else {
@@ -155,7 +158,12 @@ const customRequest = async (options: any) => {
         url = response
       }
       
-      emit('update:modelValue', url)
+      // 修复：确保总是返回数组格式，即使是单文件上传
+      if (url) {
+        const currentUrls = Array.isArray(props.modelValue) ? props.modelValue : []
+        const newUrls = [...currentUrls, url]
+        emit('update:modelValue', newUrls)
+      }
     }
     
     onSuccess(response)

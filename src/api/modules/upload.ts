@@ -24,6 +24,20 @@ export const uploadSingle = (
 }
 
 /**
+ * 高端管家专用上传
+ */
+export const uploadPremiumImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return post<UploadResponse>('/premium/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+}
+
+/**
  * 通用多文件上传
  */
 export const uploadMultiple = (
@@ -97,6 +111,20 @@ export const uploadBanner = (file: File) => {
 }
 
 /**
+ * 上传限时特惠图片
+ */
+export const uploadSpecialOfferImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return post<UploadResponse>('/marketing/special-offers/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+}
+
+/**
  * 上传服务图片
  */
 export const uploadServiceImage = (file: File) => {
@@ -120,20 +148,6 @@ export const uploadServiceImages = (files: File[]) => {
   })
 
   return post<UploadResponse[]>('/services/upload-multiple', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  })
-}
-
-/**
- * 上传特惠图片
- */
-export const uploadSpecialOfferImage = (file: File) => {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return post<UploadResponse>('/marketing/special-offers/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

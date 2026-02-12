@@ -471,9 +471,11 @@ const getOrderStatusLabel = (status: string) => {
 }
 
 // 格式化日期
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr: string | number) => {
   if (!dateStr) return '无'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  // 如果是数字（时间戳），需要转换为毫秒
+  const timestamp = typeof dateStr === 'number' ? dateStr * 1000 : dateStr
+  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 // 加载用户数据

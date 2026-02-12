@@ -25,7 +25,7 @@
       <!-- 专享服务 -->
       <el-tab-pane label="专享服务" name="offers">
         <el-card>
-          <el-table :data="offers" v-loading="loading" stripe>
+          <el-table :data="offers" v-loading="loading" stripe style="width: 100%">
         <el-table-column label="服务名称" min-width="150">
           <template #default="{ row }">
             {{ row.service?.name || '未知服务' }}
@@ -85,6 +85,19 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -175,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { 
@@ -191,6 +204,13 @@ const loading = ref(false)
 const offers = ref<NewcomerOffer[]>([])
 const services = ref<Service[]>([])
 const statusFilter = ref('')
+
+// 分页相关
+const pagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
 
 // 标签相关
 const activeTab = ref('offers')
@@ -228,15 +248,23 @@ const loadData = async () => {
 const loadOffers = async () => {
   loading.value = true
   try {
-    const params = statusFilter.value ? { status: statusFilter.value } : {}
+    const params = {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      ...(statusFilter.value && { status: statusFilter.value })
+    }
     const data = await getNewcomerOffers(params)
     // 确保数据是数组格式 - API返回的是 data.items 结构
     const responseData = data.items || data.list || data.data || data
     offers.value = Array.isArray(responseData) ? responseData : []
+    
+    // 设置总数
+    pagination.total = data.total || 0
   } catch (error) {
     console.error('获取新人专享服务失败:', error)
     ElMessage.error('获取新人专享服务失败')
     offers.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
@@ -372,11 +400,13 @@ const handleDelete = async (offer: NewcomerOffer) => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateTime: string) => {
+const formatDateTime = (dateTime: string | number) => {
   if (!dateTime) return '-'
   
   try {
-    const date = new Date(dateTime)
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
     if (isNaN(date.getTime())) return dateTime
     
     const year = date.getFullYear()
@@ -390,6 +420,18 @@ const formatDateTime = (dateTime: string) => {
     console.error('日期格式化错误:', error)
     return dateTime
   }
+}
+
+// 分页事件处理
+const handleSizeChange = (size: number) => {
+  pagination.pageSize = size
+  pagination.page = 1
+  loadOffers()
+}
+
+const handleCurrentChange = (page: number) => {
+  pagination.page = page
+  loadOffers()
 }
 
 onMounted(() => {
@@ -416,6 +458,13 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 0 16px;
 }
 
 .price-info {

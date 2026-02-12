@@ -103,42 +103,61 @@
       >
         <el-table-column type="selection" width="55" />
         
-        <el-table-column label="订单信息" min-width="220">
+        <el-table-column label="订单信息" min-width="260">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">
-                <el-icon class="order-icon"><Document /></el-icon>
-                {{ row.orderNo }}
+              <div class="order-header">
+                <div class="order-no">
+                  <el-icon class="order-icon"><Document /></el-icon>
+                  <span class="order-number">{{ row.orderNo }}</span>
+                </div>
+                <el-tag
+                  :type="getStatusTagType(row.status)"
+                  size="small"
+                  class="order-status-tag"
+                >
+                  {{ getStatusLabel(row.status) }}
+                </el-tag>
               </div>
               <div class="order-service">
-                <el-icon class="service-icon"><Service /></el-icon>
-                {{ row.serviceName }}
+                <el-icon class="service-icon"><Tools /></el-icon>
+                <span class="service-name">{{ row.service?.name || row.serviceName }}</span>
               </div>
-              <div class="order-time">
-                <el-icon class="time-icon"><Clock /></el-icon>
-                {{ formatDate(row.createTime) }}
+              <div class="order-meta">
+                <div class="order-time">
+                  <el-icon class="time-icon"><Clock /></el-icon>
+                  <span>{{ row.createdAt ? formatDate(row.createdAt, 'YYYY-MM-DD HH:mm') : '时间待定' }}</span>
+                </div>
+                <div class="order-duration" v-if="row.duration">
+                  <el-icon><Clock /></el-icon>
+                  <span>{{ row.duration }}小时</span>
+                </div>
+              </div>
+              <div class="order-special-requests" v-if="row.specialRequests">
+                <el-icon class="request-icon"><Document /></el-icon>
+                <span class="request-text">{{ row.specialRequests }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="客户信息" width="180">
+        <el-table-column label="客户信息" width="200">
           <template #default="{ row }">
             <div class="customer-info">
               <div class="customer-header">
                 <el-avatar :size="24" class="customer-avatar">
                   <el-icon><User /></el-icon>
                 </el-avatar>
-                <span class="customer-name">{{ row.userName || '未知客户' }}</span>
+                <span class="customer-name">{{ row.user?.nickname || row.userName || '未知客户' }}</span>
               </div>
               <div class="customer-details">
+                <div class="customer-phone-item" v-if="row.user?.phone || row.userPhone">
+                  <el-icon class="phone-icon"><Phone /></el-icon>
+                  <span class="customer-phone">{{ row.user?.phone || row.userPhone }}</span>
+                </div>
                 <div class="customer-address-item" v-if="row.address">
                   <el-icon class="address-icon"><Location /></el-icon>
-                  <span class="customer-address">{{ formatAddress(row.address) }}</span>
-                </div>
-                <div class="customer-phone-item" v-if="row.userPhone">
-                  <el-icon class="phone-icon"><Phone /></el-icon>
-                  <span class="customer-phone">{{ row.userPhone }}</span>
+                  <span class="customer-address">{{ row.address?.contactName }} {{ formatAddress(row.address?.detail) }}</span>
                 </div>
               </div>
             </div>
@@ -147,11 +166,11 @@
 
         <el-table-column label="服务者" width="120">
           <template #default="{ row }">
-            <div v-if="row.providerName" class="provider-info">
-              <div class="provider-name">{{ row.providerName }}</div>
+            <div v-if="row.provider?.name || row.providerName" class="provider-info">
+              <div class="provider-name">{{ row.provider?.name || row.providerName }}</div>
             </div>
             <el-button
-              v-else-if="row.status === 'pending'"
+              v-else-if="row.status === 'PENDING'"
               type="primary"
               size="small"
               @click="handleAssign(row)"
@@ -162,28 +181,29 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="状态" width="100">
+        <el-table-column label="金额" width="140" align="right">
           <template #default="{ row }">
-            <el-tag
-              :type="getStatusTagType(row.status)"
-              size="small"
-            >
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
+            <div>
+              <div class="total-price">¥{{ Number(row.totalPrice || 0).toFixed(2) }}</div>
+              <div v-if="row.discount && Number(row.discount) > 0" class="discount-info">
+                <span class="original-price">¥{{ Number(row.originalPrice || 0).toFixed(2) }}</span>
+                <span class="discount">优惠¥{{ Number(row.discount).toFixed(2) }}</span>
+              </div>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="金额" width="100" align="right">
+        <el-table-column label="服务时间" width="160">
           <template #default="{ row }">
-            <div class="amount">¥{{ row.amount }}</div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="服务时间" width="150">
-          <template #default="{ row }">
-            <div class="service-time">
-              <div>{{ row.serviceDate }}</div>
-              <div>{{ row.serviceTime }}</div>
+            <div class="service-schedule">
+              <div class="service-date">
+                <el-icon class="calendar-icon"><Clock /></el-icon>
+                {{ formatDate(row.serviceDate, 'MM-DD') }}
+              </div>
+              <div class="service-time-info">
+                <span class="time-text">{{ row.serviceTime }}</span>
+                <span v-if="row.duration" class="duration-text">{{ row.duration }}h</span>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -198,7 +218,7 @@
               详情
             </el-button>
             <el-button
-              v-if="row.status === 'pending'"
+              v-if="row.status === 'PENDING'"
               type="success"
               size="small"
               @click="handleAssign(row)"
@@ -206,7 +226,7 @@
               指派
             </el-button>
             <el-button
-              v-if="['pending', 'accepted'].includes(row.status)"
+              v-if="['PENDING', 'ACCEPTED'].includes(row.status)"
               type="danger"
               size="small"
               @click="handleCancel(row)"
@@ -214,7 +234,7 @@
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'completed' && !row.review"
+              v-if="row.status === 'COMPLETED' && !row.review"
               type="warning"
               size="small"
               @click="handleRefund(row)"
@@ -250,8 +270,9 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="订单号">{{ assignDialog.order?.orderNo }}</el-descriptions-item>
           <el-descriptions-item label="服务">{{ assignDialog.order?.serviceName }}</el-descriptions-item>
-          <el-descriptions-item label="客户">{{ assignDialog.order?.userName }}</el-descriptions-item>
-          <el-descriptions-item label="地址">{{ assignDialog.order?.address }}</el-descriptions-item>
+          <el-descriptions-item label="客户姓名">{{ assignDialog.order?.user?.nickname || assignDialog.order?.userName }}</el-descriptions-item>
+          <el-descriptions-item label="客户电话">{{ assignDialog.order?.user?.phone || assignDialog.order?.userPhone }}</el-descriptions-item>
+          <el-descriptions-item label="服务地址">{{ assignDialog.order?.address?.contactName }} {{ assignDialog.order?.address?.detail || assignDialog.order?.address }}</el-descriptions-item>
           <el-descriptions-item label="服务时间">{{ assignDialog.order?.serviceDate }} {{ assignDialog.order?.serviceTime }}</el-descriptions-item>
         </el-descriptions>
 
@@ -306,16 +327,25 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单号">{{ detailDialog.order.orderNo }}</el-descriptions-item>
           <el-descriptions-item label="服务">{{ detailDialog.order.serviceName }}</el-descriptions-item>
-          <el-descriptions-item label="客户">{{ detailDialog.order.userName }}</el-descriptions-item>
+          <el-descriptions-item label="客户姓名">{{ detailDialog.order.user?.nickname || detailDialog.order.userName }}</el-descriptions-item>
+          <el-descriptions-item label="客户电话">{{ detailDialog.order.user?.phone || detailDialog.order.userPhone }}</el-descriptions-item>
           <el-descriptions-item label="服务者">{{ detailDialog.order.providerName || '未指派' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusTagType(detailDialog.order.status)">
               {{ getStatusLabel(detailDialog.order.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="金额">¥{{ detailDialog.order.amount }}</el-descriptions-item>
-          <el-descriptions-item label="服务地址">{{ detailDialog.order.address }}</el-descriptions-item>
+          <el-descriptions-item label="金额">¥{{ Number(detailDialog.order.totalPrice || detailDialog.order.amount || 0).toFixed(2) }}</el-descriptions-item>
+          <el-descriptions-item label="支付状态">
+            <el-tag :type="detailDialog.order.paidAt ? 'success' : 'warning'" size="small">
+              {{ detailDialog.order.paidAt ? '已支付' : '未支付' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="服务地址" span="2">
+            {{ detailDialog.order.address?.contactName }} {{ detailDialog.order.address?.detail || detailDialog.order.address }}
+          </el-descriptions-item>
           <el-descriptions-item label="服务时间">{{ detailDialog.order.serviceDate }} {{ detailDialog.order.serviceTime }}</el-descriptions-item>
+          <el-descriptions-item label="下单时间">{{ formatDate(detailDialog.order.createTime) }}</el-descriptions-item>
           <el-descriptions-item label="特殊要求" span="2">{{ detailDialog.order.specialRequests || '无' }}</el-descriptions-item>
         </el-descriptions>
 
@@ -411,7 +441,7 @@ import {
   RefreshRight, 
   Search, 
   Document, 
-  Service, 
+  Tools, 
   Clock, 
   User, 
   Location, 
@@ -516,6 +546,13 @@ const refundDialog = reactive({
 // 获取状态标签类型
 const getStatusTagType = (status: Order['status']) => {
   const typeMap = {
+    PENDING: 'warning',
+    ACCEPTED: 'primary',
+    ARRIVED: 'info',
+    STARTED: 'success',
+    COMPLETED: 'success',
+    CANCELLED: 'danger',
+    // 兼容小写
     pending: 'warning',
     accepted: 'primary',
     arrived: 'info',
@@ -529,6 +566,13 @@ const getStatusTagType = (status: Order['status']) => {
 // 获取状态标签文本
 const getStatusLabel = (status: Order['status']) => {
   const labelMap = {
+    PENDING: '待指派',
+    ACCEPTED: '已接受',
+    ARRIVED: '已到达',
+    STARTED: '服务中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+    // 兼容小写
     pending: '待指派',
     accepted: '已接受',
     arrived: '已到达',
@@ -564,8 +608,18 @@ const getTimelineLabel = (key: string) => {
 }
 
 // 格式化日期
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('zh-CN')
+const formatDate = (dateStr: string | number, format = 'default') => {
+  // 如果是数字（时间戳），需要转换为毫秒
+  const timestamp = typeof dateStr === 'number' ? dateStr * 1000 : dateStr
+  const date = new Date(timestamp)
+  
+  if (format === 'YYYY-MM-DD') {
+    return date.toLocaleDateString('zh-CN')
+  } else if (format === 'YYYY-MM-DD HH:mm:ss') {
+    return date.toLocaleString('zh-CN')
+  } else {
+    return date.toLocaleString('zh-CN')
+  }
 }
 
 // 格式化地址
@@ -931,27 +985,77 @@ onMounted(() => {
   padding: 4px 0;
 }
 
-.order-no,
-.order-service,
-.order-time {
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.order-no {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.order-number {
+  font-family: 'Courier New', monospace;
+  color: #3b82f6;
+}
+
+.order-status-tag {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.order-service {
   display: flex;
   align-items: center;
   margin-bottom: 6px;
   font-size: 13px;
+  color: #374151;
 }
 
-.order-no {
-  font-weight: 600;
-  color: #303133;
+.service-name {
+  font-weight: 500;
 }
 
-.order-service {
-  color: #606266;
+.order-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
 }
 
-.order-time {
-  color: #909399;
+.order-time,
+.order-duration {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
+  color: #6b7280;
+}
+
+.order-special-requests {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12px;
+  color: #059669;
+  background: #f0fdf4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 3px solid #10b981;
+}
+
+.request-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 }
 
 .order-icon,
@@ -962,43 +1066,45 @@ onMounted(() => {
 }
 
 .order-icon {
-  color: #409eff;
+  color: #3b82f6;
 }
 
 .service-icon {
-  color: #67c23a;
+  color: #f59e0b;
 }
 
 .time-icon {
-  color: #e6a23c;
+  color: #8b5cf6;
 }
 
 .customer-info {
-  line-height: 1.6;
-  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .customer-header {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 8px;
 }
 
 .customer-avatar {
-  background-color: #409eff;
-  margin-right: 8px;
+  background-color: #f0f9ff;
+  border: 1px solid #bfdbfe;
 }
 
 .customer-name {
   font-weight: 600;
-  color: #303133;
-  font-size: 13px;
+  color: #1f2937;
+  font-size: 14px;
 }
 
 .customer-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding-left: 32px;
 }
 
 .customer-address-item,
@@ -1006,32 +1112,35 @@ onMounted(() => {
   display: flex;
   align-items: center;
   font-size: 12px;
-  color: #606266;
+  color: #6b7280;
+  line-height: 1.4;
 }
 
 .address-icon,
 .phone-icon {
-  margin-right: 4px;
+  margin-right: 6px;
   font-size: 12px;
   flex-shrink: 0;
 }
 
 .address-icon {
-  color: #f56c6c;
+  color: #ef4444;
 }
 
 .phone-icon {
-  color: #67c23a;
+  color: #10b981;
 }
 
 .customer-address {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 150px;
 }
 
 .customer-phone {
-  color: #409eff;
+  color: #3b82f6;
+  font-weight: 500;
 }
 
 .no-provider {
@@ -1042,6 +1151,71 @@ onMounted(() => {
 .amount {
   font-weight: bold;
   color: #f56c6c;
+}
+
+.total-price {
+  font-weight: 600;
+  color: #f56c6c;
+  font-size: 14px;
+}
+
+.discount-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.original-price {
+  font-size: 12px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.discount {
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+.service-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.service-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.calendar-icon {
+  color: #8b5cf6;
+  font-size: 12px;
+}
+
+.service-time-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-text {
+  font-size: 13px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.duration-text {
+  font-size: 11px;
+  color: #059669;
+  background: #f0fdf4;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-weight: 500;
 }
 
 .service-time {

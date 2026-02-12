@@ -1107,8 +1107,11 @@ const getProviderTypeLabel = (type: string) => {
 }
 
 // 格式化日期
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('zh-CN')
+const formatDate = (dateStr: string | number) => {
+  if (!dateStr) return '-'
+  // 如果是数字（时间戳），需要转换为毫秒
+  const timestamp = typeof dateStr === 'number' ? dateStr * 1000 : dateStr
+  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 // 加载数据

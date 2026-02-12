@@ -240,8 +240,10 @@ const submitBanner = async () => {
       imageUrl: dialog.form.imageUrl,
       linkUrl: dialog.form.linkUrl,
       sortOrder: dialog.form.sortOrder,
-      startTime: dialog.form.startTime,
-      endTime: dialog.form.endTime,
+      startTime: dialog.form.startTime ? 
+        Math.floor(new Date(dialog.form.startTime).getTime() / 1000) : 0,
+      endTime: dialog.form.endTime ? 
+        Math.floor(new Date(dialog.form.endTime).getTime() / 1000) : 0,
       status: dialog.form.status
     }
 

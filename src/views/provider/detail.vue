@@ -892,9 +892,11 @@ const getTransactionText = (type: string) => {
   return textMap[type] || type
 }
 
-const formatDate = (date?: string) => {
+const formatDate = (date?: string | number) => {
   if (!date) return '-'
-  return new Date(date).toLocaleString('zh-CN')
+  // 如果是数字（时间戳），需要转换为毫秒
+  const timestamp = typeof date === 'number' ? date * 1000 : date
+  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 // 图片预览相关方法

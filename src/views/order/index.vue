@@ -1,5 +1,6 @@
 <template>
   <div class="order-list">
+    <h1 style="color: red; font-size: 24px;">测试文字：订单列表页面</h1>
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
@@ -60,11 +61,19 @@
       >
         <el-table-column type="selection" width="55" />
         <el-table-column prop="orderNo" label="订单号" width="180" />
-        <el-table-column prop="userName" label="用户姓名" width="120" />
-        <el-table-column prop="serviceName" label="服务项目" width="150" />
+        <el-table-column label="用户姓名" width="120">
+          <template #default="{ row }">
+            {{ row.user?.nickname || '未知用户' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="服务项目" width="150">
+          <template #default="{ row }">
+            {{ row.service?.name || '未知服务' }}
+          </template>
+        </el-table-column>
         <el-table-column label="服务者" width="120">
           <template #default="{ row }">
-            {{ row.providerName || '未指派' }}
+            {{ row.provider?.name || '未指派' }}
           </template>
         </el-table-column>
         <el-table-column label="订单状态" width="100">
@@ -77,25 +86,52 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额" width="100">
+        <el-table-column label="金额" width="140">
           <template #default="{ row }">
-            ¥{{ row.amount }}
+            <div>
+              <div class="total-price">¥{{ Number(row.totalPrice || 0).toFixed(2) }}</div>
+              <div v-if="row.discount && Number(row.discount) > 0" class="discount-info">
+                <span class="original-price">¥{{ Number(row.originalPrice || 0).toFixed(2) }}</span>
+                <span class="discount">优惠¥{{ Number(row.discount).toFixed(2) }}</span>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="scheduledTime" label="预约时间" width="160">
+        <el-table-column label="支付状态" width="100">
           <template #default="{ row }">
-            {{ formatDate(row.scheduledTime) }}
+            <el-tag :type="row.paidAt ? 'success' : 'warning'" size="small">
+              {{ row.paidAt ? '已支付' : '未支付' }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="下单时间" width="160">
+        <el-table-column prop="serviceDate" label="服务日期" width="140">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
+            {{ formatDate(row.serviceDate, 'YYYY-MM-DD') }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column prop="serviceTime" label="服务时间" width="120">
+          <template #default="{ row }">
+            {{ row.serviceTime }}
+            <span v-if="row.duration" class="duration">({{ row.duration }}小时)</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="服务地址" width="200">
+          <template #default="{ row }">
+            <div class="address-info">
+              <div>{{ row.address?.contactName }}</div>
+              <div class="address-detail">{{ row.address?.detail }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="下单时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.createTime, 'YYYY-MM-DD HH:mm:ss') }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.status === 'pending'"
+              v-if="row.status === 'PENDING'"
               type="primary"
               size="small"
               @click="handleAssign(row)"
@@ -113,11 +149,19 @@
               退款
             </el-button>
             <el-button
-              type="primary"
+              type="info"
               size="small"
               @click="handleViewDetail(row)"
             >
               详情
+            </el-button>
+            <el-button
+              type="danger"
+              size="small"
+              @click="handleDelete(row)"
+              v-permission="['order:delete']"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -180,7 +224,7 @@ import { ElMessage } from 'element-plus'
 import { RefreshRight, Search } from '@element-plus/icons-vue'
 import { usePagination, useConfirm } from '@/composables/index'
 import { formatDate } from '@/utils/formatDate'
-import { getOrders, assignOrder, refundOrder, type Order, type OrderQueryParams } from '@/api/modules/order'
+import { getOrders, assignOrder, refundOrder, deleteOrder, type Order, type OrderQueryParams } from '@/api/modules/order'
 
 const { confirm } = useConfirm()
 const { pagination, handleSizeChange, handleCurrentChange, resetPagination } = usePagination()
@@ -200,11 +244,12 @@ const dateRange = ref<string[]>([])
 
 // 状态选项
 const statusOptions = [
-  { label: '待指派', value: 'pending' },
-  { label: '进行中', value: 'in_progress' },
-  { label: '已完成', value: 'completed' },
-  { label: '已取消', value: 'cancelled' },
-  { label: '已退款', value: 'refunded' },
+  { label: '待接单', value: 'PENDING' },
+  { label: '已接单', value: 'ACCEPTED' },
+  { label: '已到达', value: 'ARRIVED' },
+  { label: '服务中', value: 'STARTED' },
+  { label: '已完成', value: 'COMPLETED' },
+  { label: '已取消', value: 'CANCELLED' },
 ]
 
 // 响应式数据
@@ -228,34 +273,34 @@ const assignDialog = reactive({
 })
 
 // 获取状态标签类型
-const getStatusTagType = (status: Order['status']) => {
+const getStatusTagType = (status: string) => {
   const typeMap = {
-    pending: 'warning',
-    assigned: 'info',
-    in_progress: 'primary',
-    completed: 'success',
-    cancelled: 'info',
-    refunded: 'danger',
+    'PENDING': 'warning',
+    'ACCEPTED': 'info',
+    'ARRIVED': 'primary',
+    'STARTED': 'primary',
+    'COMPLETED': 'success',
+    'CANCELLED': 'info',
   }
   return typeMap[status] || 'info'
 }
 
 // 获取状态标签文本
-const getStatusLabel = (status: Order['status']) => {
+const getStatusLabel = (status: string) => {
   const labelMap = {
-    pending: '待指派',
-    assigned: '已指派',
-    in_progress: '进行中',
-    completed: '已完成',
-    cancelled: '已取消',
-    refunded: '已退款',
+    'PENDING': '待接单',
+    'ACCEPTED': '已接单',
+    'ARRIVED': '已到达',
+    'STARTED': '服务中',
+    'COMPLETED': '已完成',
+    'CANCELLED': '已取消',
   }
   return labelMap[status] || '未知'
 }
 
 // 判断是否可以退款
-const canRefund = (status: Order['status']) => {
-  return ['pending', 'assigned', 'in_progress'].includes(status)
+const canRefund = (status: string) => {
+  return ['PENDING', 'ACCEPTED', 'ARRIVED', 'STARTED'].includes(status)
 }
 
 // 日期变化处理
@@ -280,44 +325,42 @@ const loadData = async () => {
       pageSize: pagination.pageSize,
     }
     const result = await getOrders(params)
-    orders.value = result.items
-    pagination.total = result.total
+    console.log('API返回的原始数据:', result)
+    
+    // 处理不同的数据结构
+    let orderList = []
+    let totalCount = 0
+    
+    if (result && result.data && result.data.list && Array.isArray(result.data.list)) {
+      // API返回格式: { data: { list: [], total: number } }
+      orderList = result.data.list
+      totalCount = result.data.total || result.data.list.length
+    } else if (result && result.data && Array.isArray(result.data)) {
+      // API返回格式: { data: [], total: number }
+      orderList = result.data
+      totalCount = result.total || result.data.length
+    } else if (result && result.items && Array.isArray(result.items)) {
+      // 标准分页格式: { items: [], total: number }
+      orderList = result.items
+      totalCount = result.total || result.items.length
+    } else if (Array.isArray(result)) {
+      // 直接返回数组
+      orderList = result
+      totalCount = result.length
+    } else {
+      console.error('订单数据结构异常:', result)
+      ElMessage.error('订单数据格式不正确')
+      orderList = []
+      totalCount = 0
+    }
+    
+    orders.value = orderList
+    pagination.total = totalCount
   } catch (error) {
+    console.error('获取订单列表失败:', error)
     ElMessage.error('获取订单列表失败')
-    // Mock数据
-    orders.value = [
-      {
-        id: '1',
-        orderNo: 'ORD20240115001',
-        userId: 'u1',
-        userName: '用户A',
-        serviceId: 's1',
-        serviceName: '家政清洁',
-        status: 'pending',
-        amount: 150,
-        address: '北京市朝阳区某某街道',
-        scheduledTime: '2024-01-16 10:00:00',
-        createdAt: '2024-01-15 14:30:00',
-        updatedAt: '2024-01-15 14:30:00',
-      },
-      {
-        id: '2',
-        orderNo: 'ORD20240115002',
-        userId: 'u2',
-        userName: '用户B',
-        providerId: 'p1',
-        providerName: '张三',
-        serviceId: 's2',
-        serviceName: '保姆服务',
-        status: 'in_progress',
-        amount: 200,
-        address: '北京市海淀区某某街道',
-        scheduledTime: '2024-01-17 14:00:00',
-        createdAt: '2024-01-15 16:20:00',
-        updatedAt: '2024-01-15 16:20:00',
-      },
-    ]
-    pagination.total = 2
+    orders.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
@@ -389,7 +432,27 @@ const handleRefund = async (order: Order) => {
   }
 }
 
+// 删除订单
+const handleDelete = async (order: Order) => {
+  const confirmed = await confirm({
+    message: `确定要删除订单 ${order.orderNo} 吗？删除后将无法恢复！`,
+    type: 'error',
+  })
+
+  if (confirmed) {
+    try {
+      await deleteOrder(order.id)
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (error) {
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
 onMounted(() => {
+  console.log('🚀 订单列表页面已加载')
+  console.log('📋 当前查询参数:', queryParams)
   loadData()
 })
 </script>
@@ -437,5 +500,44 @@ onMounted(() => {
   .toolbar-right {
     justify-content: center;
   }
+}
+
+.discount-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.total-price {
+  font-weight: 600;
+  color: #f56c6c;
+  font-size: 14px;
+}
+
+.original-price {
+  font-size: 12px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.discount {
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+.address-info {
+  line-height: 1.4;
+}
+
+.address-detail {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.duration {
+  font-size: 12px;
+  color: #409eff;
+  margin-left: 4px;
 }
 </style>

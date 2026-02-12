@@ -25,16 +25,16 @@
       <!-- 服务分类 -->
       <el-tab-pane label="服务分类" name="categories">
         <el-card>
-          <el-table :data="categories" v-loading="categoriesLoading" stripe>
+          <el-table :data="categories" v-loading="categoriesLoading" stripe style="width: 100%">
+            <el-table-column prop="name" label="分类名称" min-width="150" />
+            
+            <el-table-column prop="description" label="描述" min-width="200" />
+            
             <el-table-column label="图标" width="80" align="center">
               <template #default="{ row }">
                 <span class="category-icon">{{ row.icon }}</span>
               </template>
             </el-table-column>
-            
-            <el-table-column prop="name" label="分类名称" min-width="150" />
-            
-            <el-table-column prop="description" label="描述" min-width="200" />
             
             <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
             
@@ -63,13 +63,26 @@
               </template>
             </el-table-column>
           </el-table>
+          
+          <!-- 分页 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="categoryPagination.page"
+              v-model:page-size="categoryPagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="categoryPagination.total"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleCategorySizeChange"
+              @current-change="handleCategoryCurrentChange"
+            />
+          </div>
         </el-card>
       </el-tab-pane>
 
       <!-- 询价管理 -->
       <el-tab-pane label="询价管理" name="inquiries">
         <el-card>
-          <el-table :data="inquiries" v-loading="inquiriesLoading" stripe>
+          <el-table :data="inquiries" v-loading="inquiriesLoading" stripe style="width: 100%">
             <el-table-column prop="companyName" label="公司名称" min-width="150" />
             
             <el-table-column label="联系人" width="120">
@@ -299,13 +312,42 @@ import { getProviders } from '@/api/modules/provider'
 import type { EnterpriseCategory, EnterpriseInquiry } from '@/types/api'
 
 const activeTab = ref('categories')
-const loading = ref(false)
 const categoriesLoading = ref(false)
 const inquiriesLoading = ref(false)
 const categories = ref<EnterpriseCategory[]>([])
 const inquiries = ref<EnterpriseInquiry[]>([])
 const salesList = ref<any[]>([])
 const statusFilter = ref('')
+
+// 分页相关
+const categoryPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const inquiryPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
+
+// 临时添加测试数据
+categories.value = [
+  { id: '1', name: '测试分类1', description: '描述1', sortOrder: 1, status: 'active' },
+  { id: '2', name: '测试分类2', description: '描述2', sortOrder: 2, status: 'active' },
+  { id: '3', name: '测试分类3', description: '描述3', sortOrder: 3, status: 'active' },
+  { id: '4', name: '测试分类4', description: '描述4', sortOrder: 4, status: 'active' },
+  { id: '5', name: '测试分类5', description: '描述5', sortOrder: 5, status: 'active' },
+  { id: '6', name: '测试分类6', description: '描述6', sortOrder: 6, status: 'active' },
+  { id: '7', name: '测试分类7', description: '描述7', sortOrder: 7, status: 'active' },
+  { id: '8', name: '测试分类8', description: '描述8', sortOrder: 8, status: 'active' },
+  { id: '9', name: '测试分类9', description: '描述9', sortOrder: 9, status: 'active' },
+  { id: '10', name: '测试分类10', description: '描述10', sortOrder: 10, status: 'active' },
+  { id: '11', name: '测试分类11', description: '描述11', sortOrder: 11, status: 'active' },
+  { id: '12', name: '测试分类12', description: '描述12', sortOrder: 12, status: 'active' }
+]
+categoryPagination.total = 12
 
 // 分类弹窗
 const categoryFormRef = ref()
@@ -353,8 +395,12 @@ const detailDialog = reactive({
 const loadData = async () => {
   if (activeTab.value === 'categories') {
     await loadCategories()
-  } else {
+  } else if (activeTab.value === 'inquiries') {
     await loadInquiries()
+    // 只在询价管理时才加载销售人员列表
+    if (salesList.value.length === 0) {
+      await loadSalesList()
+    }
   }
 }
 
@@ -362,15 +408,21 @@ const loadData = async () => {
 const loadCategories = async () => {
   categoriesLoading.value = true
   try {
-    const params = statusFilter.value ? { status: statusFilter.value } : {}
+    const params = {
+      page: categoryPagination.page,
+      pageSize: categoryPagination.pageSize,
+      ...(statusFilter.value && { status: statusFilter.value })
+    }
     const data = await getEnterpriseCategories(params)
     // 确保数据是数组格式
     const responseData = data.list || data.data || data
     categories.value = Array.isArray(responseData) ? responseData : []
+    categoryPagination.total = data.total || data.pagination?.total || 0
   } catch (error) {
     console.error('获取企业分类失败:', error)
     ElMessage.error('获取企业分类失败')
     categories.value = []
+    categoryPagination.total = 0
   } finally {
     categoriesLoading.value = false
   }
@@ -411,10 +463,17 @@ const handleTabChange = (tabName: string) => {
 
 // 打开分类弹窗
 const openCategoryDialog = (category?: EnterpriseCategory) => {
-  categoryDialog.type = category ? 'edit' : 'create'
-  categoryDialog.editingId = category?.id || ''
+  console.log('openCategoryDialog 调用，参数:', category)
   
-  if (category) {
+  // 重置弹窗状态
+  resetCategoryDialog()
+  
+  // 修复：只有当category是真正的对象且有id时才设置为编辑模式
+  if (category && typeof category === 'object' && category.id) {
+    // 编辑模式
+    console.log('设置为编辑模式')
+    categoryDialog.type = 'edit'
+    categoryDialog.editingId = category.id
     categoryDialog.form = {
       name: category.name,
       icon: category.icon,
@@ -423,9 +482,14 @@ const openCategoryDialog = (category?: EnterpriseCategory) => {
       status: category.status
     }
   } else {
-    resetCategoryDialog()
+    // 新增模式 - 确保type设置为create
+    console.log('设置为新增模式')
+    categoryDialog.type = 'create'
+    categoryDialog.editingId = ''
+    // form已经在resetCategoryDialog中重置了
   }
   
+  console.log('最终 categoryDialog.type:', categoryDialog.type)
   categoryDialog.visible = true
 }
 
@@ -444,6 +508,8 @@ const viewInquiryDetail = (inquiry: EnterpriseInquiry) => {
 
 // 重置分类弹窗
 const resetCategoryDialog = () => {
+  console.log('resetCategoryDialog 调用，设置 type = create')
+  categoryDialog.type = 'create'
   categoryDialog.editingId = ''
   categoryDialog.form = {
     name: '',
@@ -575,11 +641,13 @@ const getInquiryStatusText = (status: string) => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateTime: string) => {
+const formatDateTime = (dateTime: string | number) => {
   if (!dateTime) return '-'
   
   try {
-    const date = new Date(dateTime)
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
     if (isNaN(date.getTime())) return dateTime
     
     const year = date.getFullYear()
@@ -595,9 +663,22 @@ const formatDateTime = (dateTime: string) => {
   }
 }
 
+// 分页事件处理
+const handleCategorySizeChange = (size: number) => {
+  categoryPagination.pageSize = size
+  categoryPagination.page = 1
+  loadCategories()
+}
+
+const handleCategoryCurrentChange = (page: number) => {
+  categoryPagination.page = page
+  loadCategories()
+}
+
 onMounted(() => {
   loadCategories()
-  loadSalesList()
+  // 移除不必要的loadSalesList调用
+  // loadSalesList()
 })
 </script>
 
@@ -621,8 +702,16 @@ onMounted(() => {
   align-items: center;
 }
 
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 0 16px;
+}
+
 .category-icon {
-  font-size: 24px;
+  font-size: 16px;
+  vertical-align: middle;
 }
 
 .contact-info {

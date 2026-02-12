@@ -128,7 +128,11 @@
               </template>
             </el-table-column>
 
-            <el-table-column prop="createdAt" label="创建时间" width="180" />
+            <el-table-column prop="createdAt" label="创建时间" width="180">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
+              </template>
+            </el-table-column>
 
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
@@ -196,10 +200,10 @@
               <template #default="{ row }">
                 <div 
                   class="special-offer-image-wrapper"
-                  @click="openImagePreview([row.image], 0)"
+                  @click="openImagePreview(row.images || [], 0)"
                 >
                   <el-image
-                    :src="row.image"
+                    :src="(row.images && row.images.length > 0) ? row.images[0] : ''"
                     fit="cover"
                     class="special-offer-preview"
                   />
@@ -209,9 +213,9 @@
 
             <el-table-column prop="name" label="服务名称" min-width="150" />
             
-            <el-table-column prop="category" label="分类" width="120" align="center">
+            <el-table-column prop="categoryId" label="分类" width="120" align="center">
               <template #default="{ row }">
-                <el-tag type="info">{{ row.category }}</el-tag>
+                <el-tag type="info">{{ getCategoryName(row.categoryId) }}</el-tag>
               </template>
             </el-table-column>
 
@@ -267,7 +271,11 @@
               </template>
             </el-table-column>
 
-            <el-table-column prop="createdAt" label="创建时间" width="180" />
+            <el-table-column prop="createdAt" label="创建时间" width="180">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
+              </template>
+            </el-table-column>
 
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
@@ -397,11 +405,13 @@
         </el-form-item>
 
         <el-form-item label="服务分类" required>
-          <el-select v-model="specialOfferDialog.form.category" placeholder="请选择服务分类" style="width: 100%">
-            <el-option label="保洁清洗" value="保洁清洗" />
-            <el-option label="维修安装" value="维修安装" />
-            <el-option label="搬家运输" value="搬家运输" />
-            <el-option label="月嫂保姆" value="月嫂保姆" />
+          <el-select v-model="specialOfferDialog.form.categoryId" placeholder="请选择服务分类" style="width: 100%" :loading="categoriesLoading">
+            <el-option 
+              v-for="category in categories" 
+              :key="category.id"
+              :label="category.name" 
+              :value="category.id" 
+            />
           </el-select>
         </el-form-item>
 
@@ -432,14 +442,15 @@
         </el-form-item>
 
         <el-form-item label="服务图片" required>
-          <el-upload
-            v-model:file-list="specialOfferDialog.imageFiles"
-            :auto-upload="false"
-            list-type="picture-card"
+          <ImageUpload 
+            :key="`special-offer-${specialOfferDialog.form.id || 'create'}-${Date.now()}`"
+            v-model="specialOfferDialog.form.images"
+            upload-type="admin/special-offers"
             :limit="1"
-          >
-            <el-icon><Plus /></el-icon>
-          </el-upload>
+            tip="支持jpg、png、gif、webp格式，文件大小不超过5MB"
+            upload-text="上传服务图片"
+            :custom-upload="handleSpecialOfferUpload"
+          />
         </el-form-item>
 
         <el-form-item label="服务描述">
@@ -510,7 +521,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Ticket, Check, Select, Picture, Plus, Star } from '@element-plus/icons-vue'
+import ImageUpload from '@/components/ImageUpload.vue'
 import ImagePreview from '@/components/ImagePreview.vue'
+import { uploadSpecialOfferImage } from '@/api/modules/upload'
 import { 
   getCoupons,
   createCoupon,
@@ -523,7 +536,31 @@ import {
   deleteSpecialOffer as deleteSpecialOfferApi,
   updateSpecialOfferStatus as updateSpecialOfferStatusApi
 } from '@/api/modules/marketing'
-import type { Coupon, SpecialOffer } from '@/types/api'
+import { getCategories } from '@/api/modules/category'  // 添加分类API导入
+import type { Coupon, SpecialOffer, Category } from '@/types/api'  // 添加Category类型
+
+// 格式化日期时间函数
+const formatDateTime = (dateTime: string | number) => {
+  if (!dateTime) return '-'
+  
+  try {
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) return dateTime
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  } catch (error) {
+    console.error('日期格式化错误:', error)
+    return dateTime
+  }
+}
 
 const activeTab = ref('coupons')
 
@@ -551,6 +588,10 @@ const couponPagination = reactive({
   pageSize: 20,
   total: 0
 })
+
+// 分类相关
+const categories = ref<Category[]>([])
+const categoriesLoading = ref(false)
 
 const couponDialog = reactive({
   visible: false,
@@ -583,8 +624,8 @@ const specialOfferDialog = reactive({
   visible: false,
   loading: false,
   title: '',
-  imageFiles: [] as any[],
   form: {
+    id: '',
     name: '',
     category: '',
     price: 0,
@@ -666,6 +707,33 @@ const loadCoupons = async () => {
   }
 }
 
+// 获取分类数据
+const loadCategories = async () => {
+  categoriesLoading.value = true
+  try {
+    const data = await getCategories()
+    console.log('分类API返回数据:', data)
+    
+    // 处理不同的数据结构
+    let categoryList = []
+    if (Array.isArray(data)) {
+      categoryList = data
+    } else if (data && data.data && Array.isArray(data.data)) {
+      categoryList = data.data
+    } else if (data && data.list && Array.isArray(data.list)) {
+      categoryList = data.list
+    }
+    
+    categories.value = categoryList
+    console.log('处理后的分类数据:', categories.value)
+  } catch (error) {
+    ElMessage.error('获取分类列表失败')
+    console.error('获取分类列表失败:', error)
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
 const loadSpecialOffers = async () => {
   specialOfferLoading.value = true
   try {
@@ -682,6 +750,8 @@ const loadSpecialOffers = async () => {
   } catch (error) {
     ElMessage.error('获取限时特惠列表失败')
     console.error('获取限时特惠列表失败:', error)
+    specialOffers.value = []
+    specialOfferPagination.total = 0
   } finally {
     specialOfferLoading.value = false
   }
@@ -691,11 +761,11 @@ const openSpecialOfferDialog = () => {
   specialOfferDialog.title = '创建限时特惠'
   specialOfferDialog.form = {
     name: '',
-    category: '',
+    categoryId: '',  // 修复：使用categoryId
     price: 0,
     unit: '次',
     rating: 4.5,
-    image: '',
+    images: [],  // 修复：使用images数组
     description: '',
     providerCount: 0,
     tags: [],
@@ -709,27 +779,29 @@ const openSpecialOfferDialog = () => {
 const editSpecialOffer = (specialOffer: SpecialOffer) => {
   specialOfferDialog.title = '编辑限时特惠'
   specialOfferDialog.form = {
+    id: specialOffer.id,
     name: specialOffer.name,
-    category: specialOffer.category,
+    categoryId: specialOffer.categoryId,  // 修复：使用categoryId
     price: specialOffer.price,
     unit: specialOffer.unit,
     rating: specialOffer.rating,
-    image: specialOffer.image,
+    images: specialOffer.images || [],  // 修复：使用images数组
     description: specialOffer.description,
     providerCount: specialOffer.providerCount,
     tags: specialOffer.tags,
     status: specialOffer.status,
     sortOrder: specialOffer.sortOrder
   }
-  specialOfferDialog.imageFiles = specialOffer.image ? [{
-    name: 'specialOffer',
-    url: specialOffer.image
-  }] : []
   specialOfferDialog.visible = true
 }
 
+// 自定义限时特惠图片上传函数
+const handleSpecialOfferUpload = async (file: File) => {
+  return await uploadSpecialOfferImage(file)
+}
+
 const submitSpecialOffer = async () => {
-  if (!specialOfferDialog.form.name || !specialOfferDialog.form.category || !specialOfferDialog.form.price) {
+  if (!specialOfferDialog.form.name || !specialOfferDialog.form.categoryId || !specialOfferDialog.form.price) {
     ElMessage.warning('请填写完整信息')
     return
   }
@@ -737,11 +809,6 @@ const submitSpecialOffer = async () => {
   specialOfferDialog.loading = true
   try {
     const formData = { ...specialOfferDialog.form }
-    
-    // 处理图片上传（这里简化处理，实际应该上传到服务器）
-    if (specialOfferDialog.imageFiles.length > 0) {
-      formData.image = specialOfferDialog.imageFiles[0].url || specialOfferDialog.image
-    }
     
     if (specialOfferDialog.title === '创建限时特惠') {
       await createSpecialOffer(formData)
@@ -971,8 +1038,8 @@ const submitBanner = async () => {
     const formData = { ...bannerDialog.form }
     
     if (bannerDialog.dateRange) {
-      formData.startTime = bannerDialog.dateRange[0].toISOString()
-      formData.endTime = bannerDialog.dateRange[1].toISOString()
+      formData.startTime = Math.floor(bannerDialog.dateRange[0].getTime() / 1000)
+      formData.endTime = Math.floor(bannerDialog.dateRange[1].getTime() / 1000)
     }
     
     if (bannerDialog.title === '添加轮播图') {
@@ -1070,6 +1137,12 @@ const handleCouponSizeChange = (size: number) => {
   loadCoupons()
 }
 
+// 获取分类名称的辅助函数
+const getCategoryName = (categoryId: string) => {
+  const category = categories.value.find(c => c.id === categoryId)
+  return category ? category.name : categoryId
+}
+
 // 图片预览相关方法
 const openImagePreview = (images: string[], index: number = 0) => {
   if (!images || images.length === 0) return
@@ -1097,6 +1170,9 @@ onMounted(() => {
     couponLoading.value = false
     isInitialized.value = true // 设置初始化完成标志
   })
+  
+  // 加载分类数据
+  loadCategories()
 })
 </script>
 

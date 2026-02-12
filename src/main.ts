@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
@@ -24,7 +25,9 @@ const authStore = useAuthStore()
 authStore.initAuth()
 
 app.use(router)
-app.use(ElementPlus)
+app.use(ElementPlus, {
+  locale: zhCn,
+})
 
 // 注册自定义指令
 setupDirectives(app)

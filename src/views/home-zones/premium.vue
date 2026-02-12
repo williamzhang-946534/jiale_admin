@@ -25,7 +25,7 @@
       <!-- 服务分类 -->
       <el-tab-pane label="服务分类" name="categories">
         <el-card>
-          <el-table :data="categories" v-loading="categoriesLoading" stripe>
+          <el-table :data="categories" v-loading="categoriesLoading" stripe style="width: 100%">
             <el-table-column label="图片" width="100">
               <template #default="{ row }">
                 <el-image
@@ -87,13 +87,26 @@
               </template>
             </el-table-column>
           </el-table>
+          
+          <!-- 分页 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="categoryPagination.page"
+              v-model:page-size="categoryPagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="categoryPagination.total"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleCategorySizeChange"
+              @current-change="handleCategoryCurrentChange"
+            />
+          </div>
         </el-card>
       </el-tab-pane>
 
       <!-- 申请审核 -->
       <el-tab-pane label="申请审核" name="applications">
         <el-card>
-          <el-table :data="applications" v-loading="applicationsLoading" stripe>
+          <el-table :data="applications" v-loading="applicationsLoading" stripe style="width: 100%">
             <el-table-column prop="serviceName" label="服务类型" min-width="150" />
             
             <el-table-column label="联系人信息" width="150">
@@ -206,7 +219,7 @@
             v-model="categoryDialog.form.image"
             :limit="1"
             accept="image/*"
-            upload-type="premium-category"
+            upload-type="premium/upload"
           />
         </el-form-item>
         
@@ -365,6 +378,36 @@ const categories = ref<PremiumCategory[]>([])
 const applications = ref<PremiumApplication[]>([])
 const statusFilter = ref('')
 
+// 分页相关
+const categoryPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const applicationPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
+
+// 临时添加测试数据
+categories.value = [
+  { id: '1', name: '测试分类1', description: '描述1', image: '', sortOrder: 1, status: 'active' },
+  { id: '2', name: '测试分类2', description: '描述2', image: '', sortOrder: 2, status: 'active' },
+  { id: '3', name: '测试分类3', description: '描述3', image: '', sortOrder: 3, status: 'active' },
+  { id: '4', name: '测试分类4', description: '描述4', image: '', sortOrder: 4, status: 'active' },
+  { id: '5', name: '测试分类5', description: '描述5', image: '', sortOrder: 5, status: 'active' },
+  { id: '6', name: '测试分类6', description: '描述6', image: '', sortOrder: 6, status: 'active' },
+  { id: '7', name: '测试分类7', description: '描述7', image: '', sortOrder: 7, status: 'active' },
+  { id: '8', name: '测试分类8', description: '描述8', image: '', sortOrder: 8, status: 'active' },
+  { id: '9', name: '测试分类9', description: '描述9', image: '', sortOrder: 9, status: 'active' },
+  { id: '10', name: '测试分类10', description: '描述10', image: '', sortOrder: 10, status: 'active' },
+  { id: '11', name: '测试分类11', description: '描述11', image: '', sortOrder: 11, status: 'active' },
+  { id: '12', name: '测试分类12', description: '描述12', image: '', sortOrder: 12, status: 'active' }
+]
+categoryPagination.total = 12
+
 // 分类弹窗
 const categoryFormRef = ref()
 const categoryDialog = reactive({
@@ -427,15 +470,21 @@ const loadData = async () => {
 const loadCategories = async () => {
   categoriesLoading.value = true
   try {
-    const params = statusFilter.value ? { status: statusFilter.value } : {}
+    const params = {
+      page: categoryPagination.page,
+      pageSize: categoryPagination.pageSize,
+      ...(statusFilter.value && { status: statusFilter.value })
+    }
     const data = await getPremiumCategories(params)
     // 确保数据是数组格式
     const responseData = data.list || data.data || data
     categories.value = Array.isArray(responseData) ? responseData : []
+    categoryPagination.total = data.total || data.pagination?.total || 0
   } catch (error) {
     console.error('获取高端管家分类失败:', error)
     ElMessage.error('获取高端管家分类失败')
     categories.value = []
+    categoryPagination.total = 0
   } finally {
     categoriesLoading.value = false
   }
@@ -466,10 +515,14 @@ const handleTabChange = (tabName: string) => {
 
 // 打开分类弹窗
 const openCategoryDialog = (category?: PremiumCategory) => {
-  categoryDialog.type = category ? 'edit' : 'create'
-  categoryDialog.editingId = category?.id || ''
+  // 重置弹窗状态
+  resetCategoryDialog()
   
-  if (category) {
+  // 修复：只有当category是真正的对象且有id时才设置为编辑模式
+  if (category && typeof category === 'object' && category.id) {
+    // 编辑模式
+    categoryDialog.type = 'edit'
+    categoryDialog.editingId = category.id
     categoryDialog.form = {
       name: category.name,
       tag: category.tag,
@@ -482,7 +535,10 @@ const openCategoryDialog = (category?: PremiumCategory) => {
       status: category.status
     }
   } else {
-    resetCategoryDialog()
+    // 新增模式 - 确保type设置为create
+    categoryDialog.type = 'create'
+    categoryDialog.editingId = ''
+    // form已经在resetCategoryDialog中重置了
   }
   
   categoryDialog.visible = true
@@ -508,6 +564,7 @@ const assignManager = (application: PremiumApplication) => {
 
 // 重置分类弹窗
 const resetCategoryDialog = () => {
+  categoryDialog.type = 'create'  // 添加这行
   categoryDialog.editingId = ''
   categoryDialog.form = {
     name: '',
@@ -651,11 +708,13 @@ const getApplicationStatusText = (status: string) => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateTime: string) => {
+const formatDateTime = (dateTime: string | number) => {
   if (!dateTime) return '-'
   
   try {
-    const date = new Date(dateTime)
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
     if (isNaN(date.getTime())) return dateTime
     
     const year = date.getFullYear()
@@ -669,6 +728,18 @@ const formatDateTime = (dateTime: string) => {
     console.error('日期格式化错误:', error)
     return dateTime
   }
+}
+
+// 分页事件处理
+const handleCategorySizeChange = (size: number) => {
+  categoryPagination.pageSize = size
+  categoryPagination.page = 1
+  loadCategories()
+}
+
+const handleCategoryCurrentChange = (page: number) => {
+  categoryPagination.page = page
+  loadCategories()
 }
 
 onMounted(() => {
@@ -694,6 +765,13 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 0 16px;
 }
 
 .no-image {

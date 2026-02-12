@@ -52,17 +52,83 @@ export interface Category {
 
 // ===== 服务相关 =====
 export interface Service {
+  // === 基础信息 ===
   id: string
   name: string
-  categoryId: string
-  price: number
-  unit: string
-  images: string[]
   description: string
-  tags: string[]
+  
+  // === 分类信息 ===
+  categoryId: string
+  subCategoryId?: string
+  
+  // === 价格信息 ===
+  price: number
+  originalPrice?: number
+  unit: string
+  
+  // === 媒体资源 ===
+  images: string[]
+  
+  // === 评价统计 ===
+  rating: number
+  sales: number
+  providerCount: number
+  
+  // === 标签分类 ===
+  tags?: string[]
+  type?: ServiceType
+  
+  // === 服务详情 ===
+  promises?: string[]
+  process?: { title: string; desc: string }[]
+  details?: string[]
+  specifications?: ServiceSpecification[]
+  
+  // === 营销标识 ===
+  isSpecial?: boolean
+  isFeatured?: boolean
+  isRecommended?: boolean
+  badge?: string
+  priority?: number
+  
+  // === 服务规则 ===
+  location?: string
+  serviceArea?: string[]
+  minBookingTime?: number
+  maxBookingTime?: number
+  serviceDuration?: number
+  cancelDeadline?: number
+  
+  // === 服务保障 ===
+  insurance?: string
+  guarantee?: string[]
+  afterSales?: string
+  
+  // === 套餐相关 ===
+  isPackage?: boolean
+  discount?: number
+  packageItems?: any
+  
+  // === 状态管理 ===
   status: 'active' | 'inactive'
   createTime?: string
   updateTime?: string
+}
+
+// 服务类型枚举
+export enum ServiceType {
+  CLEANING = 'cleaning',
+  NANNY = 'nanny',
+  REPAIR = 'repair',
+  MOVING = 'moving',
+  OTHER = 'other'
+}
+
+// 服务规格接口
+export interface ServiceSpecification {
+  name: string
+  value: string
+  unit?: string
 }
 
 export interface ServiceDetail {
@@ -386,11 +452,11 @@ export interface BannerParams {
 export interface SpecialOffer {
   id: string
   name: string
-  category: string
+  categoryId: string  // 修复：使用categoryId而不是category
   price: number
   unit: string
   rating: number
-  image: string
+  images: string[]  // 修复：Prisma期望字符串数组
   description: string
   providerCount: number
   tags: string[]
@@ -466,6 +532,7 @@ export type UploadType =
   | 'admin/configs'
   | 'common/icons'
   | 'common/static'
+  | 'premium/upload'
   | 'temp'
 
 export interface UploadResponse {

@@ -30,21 +30,26 @@
       <!-- 闪购场次 -->
       <el-tab-pane label="闪购场次" name="sessions">
         <el-card>
-          <el-table :data="sessions" v-loading="sessionsLoading" stripe>
-            <el-table-column prop="date" label="日期" width="120" />
-            
-            <el-table-column label="时间段" width="150">
+          <el-table :data="sessions" v-loading="sessionsLoading" stripe style="width: 100%">
+            <el-table-column label="场次信息" width="150">
               <template #default="{ row }">
-                {{ row.startTime }} - {{ row.endTime }}
+                <div class="session-info">
+                  <div>{{ formatDateOnly(row.date) }}</div>
+                  <div>{{ row.startTime }} - {{ row.endTime }}</div>
+                </div>
               </template>
             </el-table-column>
             
-            <el-table-column prop="status" label="状态" width="100" align="center">
+            <el-table-column label="商品数量" width="120" align="center">
               <template #default="{ row }">
-                <el-tag 
-                  :type="getStatusType(row.status)"
-                >
-                  {{ getStatusText(row.status) }}
+                {{ row.products?.length || 0 }} 个商品
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'active' ? 'success' : row.status === 'upcoming' ? 'warning' : 'info'">
+                  {{ row.status === 'active' ? '进行中' : row.status === 'upcoming' ? '即将开始' : '已结束' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -68,20 +73,38 @@
               </template>
             </el-table-column>
           </el-table>
+      
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="sessionPagination.page"
+          v-model:page-size="sessionPagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="sessionPagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          @size-change="handleSessionSizeChange"
+          @current-change="handleSessionCurrentChange"
+        />
+      </div>
         </el-card>
       </el-tab-pane>
 
       <!-- 闪购商品 -->
       <el-tab-pane label="闪购商品" name="products">
         <el-card>
-          <el-table :data="products" v-loading="productsLoading" stripe>
-            <el-table-column prop="serviceName" label="服务名称" min-width="150" />
+          <el-table :data="products" v-loading="productsLoading" stripe style="width: 100%">
+            <el-table-column label="服务名称" min-width="150">
+              <template #default="{ row }">
+                {{ row.service?.name || '未知服务' }}
+              </template>
+            </el-table-column>
             
             <el-table-column label="场次信息" width="150">
               <template #default="{ row }">
                 <div class="session-info">
-                  <div>{{ row.sessionDate }}</div>
-                  <div>{{ row.sessionTime }}</div>
+                  <div>{{ formatDateOnly(row.session?.date) }}</div>
+                  <div>{{ row.session?.startTime }} - {{ row.session?.endTime }}</div>
                 </div>
               </template>
             </el-table-column>
@@ -126,6 +149,20 @@
               </template>
             </el-table-column>
           </el-table>
+          
+          <!-- 分页 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="productPagination.page"
+              v-model:page-size="productPagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="productPagination.total"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+              @size-change="handleProductSizeChange"
+              @current-change="handleProductCurrentChange"
+            />
+          </div>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -314,6 +351,36 @@ const products = ref<FlashSaleProduct[]>([])
 const services = ref<Service[]>([])
 const statusFilter = ref('')
 
+// 分页相关
+const sessionPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 4 // 根据API响应设置
+})
+
+const productPagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0
+})
+
+// 临时添加测试数据
+products.value = [
+  { id: '1', name: '测试商品1', price: 10 },
+  { id: '2', name: '测试商品2', price: 20 },
+  { id: '3', name: '测试商品3', price: 30 },
+  { id: '4', name: '测试商品4', price: 40 },
+  { id: '5', name: '测试商品5', price: 50 },
+  { id: '6', name: '测试商品6', price: 60 },
+  { id: '7', name: '测试商品7', price: 70 },
+  { id: '8', name: '测试商品8', price: 80 },
+  { id: '9', name: '测试商品9', price: 90 },
+  { id: '10', name: '测试商品10', price: 100 },
+  { id: '11', name: '测试商品11', price: 110 },
+  { id: '12', name: '测试商品12', price: 120 }
+]
+productPagination.total = 12
+
 // 场次弹窗
 const sessionFormRef = ref()
 const sessionDialog = reactive({
@@ -365,7 +432,7 @@ const productDialog = reactive({
 const loadData = async () => {
   if (activeTab.value === 'sessions') {
     await loadSessions()
-  } else {
+  } else if (activeTab.value === 'products') {
     await loadProducts()
   }
 }
@@ -374,15 +441,21 @@ const loadData = async () => {
 const loadSessions = async () => {
   sessionsLoading.value = true
   try {
-    const params = statusFilter.value ? { status: statusFilter.value } : {}
+    const params = {
+      page: sessionPagination.page,
+      pageSize: sessionPagination.pageSize,
+      ...(statusFilter.value && { status: statusFilter.value })
+    }
     const data = await getFlashSaleSessions(params)
     // 确保数据是数组格式
-    const responseData = data.list || data.data || data
+    const responseData = data.items || data.list || data.data || data
     sessions.value = Array.isArray(responseData) ? responseData : []
+    sessionPagination.total = data.total || data.pagination?.total || 0
   } catch (error) {
     console.error('获取闪购场次失败:', error)
     ElMessage.error('获取闪购场次失败')
     sessions.value = []
+    sessionPagination.total = 0
   } finally {
     sessionsLoading.value = false
   }
@@ -392,25 +465,25 @@ const loadSessions = async () => {
 const loadProducts = async () => {
   productsLoading.value = true
   try {
-    const data = await getFlashSaleProducts()
-    // 确保数据是数组格式
-    const responseData = data.list || data.data || data
-    products.value = Array.isArray(responseData) ? responseData : []
-    
-    // 为每个商品关联场次信息
-    if (Array.isArray(products.value)) {
-      products.value.forEach(product => {
-        const session = sessions.value.find(s => s.id === product.sessionId)
-        if (session) {
-          product.sessionDate = session.date
-          product.sessionTime = `${session.startTime}-${session.endTime}`
-        }
-      })
+    const params = {
+      page: productPagination.page,
+      pageSize: productPagination.pageSize
     }
+    const data = await getFlashSaleProducts(params)
+    console.log('商品API响应:', data)
+    
+    // API返回的是 data.items 结构
+    const responseData = data.items || data.list || data.data || data
+    products.value = Array.isArray(responseData) ? responseData : []
+    productPagination.total = data.total || data.pagination?.total || 0
+    
+    console.log('商品总数:', productPagination.total)
+    console.log('商品数据:', products.value)
   } catch (error) {
     console.error('获取闪购商品失败:', error)
     ElMessage.error('获取闪购商品失败')
     products.value = []
+    productPagination.total = 0
   } finally {
     productsLoading.value = false
   }
@@ -443,7 +516,7 @@ const openSessionDialog = (session?: FlashSaleSession) => {
     sessionDialog.type = 'edit'
     sessionDialog.editingId = session.id
     sessionDialog.form = {
-      date: session.date,
+      date: session.date ? new Date(session.date * 1000) : '',
       startTime: session.startTime,
       endTime: session.endTime,
       sortOrder: session.sortOrder
@@ -531,7 +604,8 @@ const submitSession = async () => {
     // 格式化时间
     const formData = {
       ...sessionDialog.form,
-      date: sessionDialog.form.date ? new Date(sessionDialog.form.date).toISOString().split('T')[0] : '',
+      date: sessionDialog.form.date ? 
+        Math.floor(new Date(sessionDialog.form.date).getTime() / 1000) : 0,
       startTime: sessionDialog.form.startTime ? 
         new Date(sessionDialog.form.startTime).toTimeString().slice(0, 5) : '',
       endTime: sessionDialog.form.endTime ? 
@@ -615,7 +689,7 @@ const handleDeleteSession = async (session: FlashSaleSession) => {
 const handleDeleteProduct = async (product: FlashSaleProduct) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除商品"${product.serviceName}"吗？`,
+      `确定要删除商品"${product.service?.name || '未知商品'}"吗？`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -656,11 +730,13 @@ const getStatusText = (status: string) => {
 }
 
 // 格式化日期时间
-const formatDateTime = (dateTime: string) => {
+const formatDateTime = (dateTime: string | number) => {
   if (!dateTime) return '-'
   
   try {
-    const date = new Date(dateTime)
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
     if (isNaN(date.getTime())) return dateTime
     
     const year = date.getFullYear()
@@ -674,6 +750,51 @@ const formatDateTime = (dateTime: string) => {
     console.error('日期格式化错误:', error)
     return dateTime
   }
+}
+
+// 格式化日期（只显示日期部分）
+const formatDateOnly = (dateTime: string | number) => {
+  if (!dateTime) return '-'
+  
+  try {
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) return dateTime
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}`
+  } catch (error) {
+    console.error('日期格式化错误:', error)
+    return dateTime
+  }
+}
+
+// 分页事件处理
+const handleProductSizeChange = (size: number) => {
+  productPagination.pageSize = size
+  productPagination.page = 1
+  loadProducts()
+}
+
+const handleProductCurrentChange = (page: number) => {
+  productPagination.page = page
+  loadProducts()
+}
+
+// 场次分页事件处理
+const handleSessionSizeChange = (size: number) => {
+  sessionPagination.pageSize = size
+  sessionPagination.page = 1
+  loadSessions()
+}
+
+const handleSessionCurrentChange = (page: number) => {
+  sessionPagination.page = page
+  loadSessions()
 }
 
 onMounted(() => {
@@ -700,6 +821,58 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 0 16px;
+}
+
+/* 确保表格占满宽度 */
+.full-width-card {
+  width: 100% !important;
+}
+
+.full-width-card :deep(.el-card__body) {
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+.full-width-table {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.full-width-table) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.el-table) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.el-table__body) {
+  width: 100% !important;
+}
+
+:deep(.el-table__header) {
+  width: 100% !important;
+}
+
+:deep(.el-table__body-wrapper) {
+  width: 100% !important;
+}
+
+:deep(.el-table__header-wrapper) {
+  width: 100% !important;
+}
+
+:deep(.el-table__inner-wrapper) {
+  width: 100% !important;
 }
 
 .session-info {

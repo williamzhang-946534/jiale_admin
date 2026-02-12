@@ -14,7 +14,11 @@
       <el-table-column prop="username" label="用户名" width="160" />
       <el-table-column prop="nickname" label="昵称" width="160" />
       <el-table-column prop="role" label="角色" width="120" />
-      <el-table-column prop="createdAt" label="创建时间" min-width="180" />
+      <el-table-column prop="createdAt" label="创建时间" min-width="180">
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
     </el-table>
 
     <el-dialog v-model="createDialog.visible" title="新增管理员" width="420px">
@@ -46,6 +50,29 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAdmins, createAdmin, type AdminItem, type CreateAdminPayload } from '@/api/modules/admin'
+
+// 格式化日期时间函数
+const formatDateTime = (dateTime: string | number) => {
+  if (!dateTime) return '-'
+  
+  try {
+    // 如果是数字（时间戳），需要转换为毫秒
+    const timestamp = typeof dateTime === 'number' ? dateTime * 1000 : dateTime
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) return dateTime
+    
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  } catch (error) {
+    console.error('日期格式化错误:', error)
+    return dateTime
+  }
+}
 
 const loading = ref(false)
 const admins = ref<AdminItem[]>([])
